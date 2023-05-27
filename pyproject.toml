@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "telegram-bot-example-project"
+version = "0.1.0"
+description = ""
+authors = ["Rodion <rodiononon@yandex.ru>"]
+readme = "README.md"
+packages = [{include = "telegram_bot_example_project"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = {extras = ["dotenv"], version = "^1.10.8"}
+aiogram = "^2.25.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
