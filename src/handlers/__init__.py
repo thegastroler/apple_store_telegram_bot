@@ -1,1 +1,1 @@
-from .default_cmds import dp
+from .default_cmds import router
