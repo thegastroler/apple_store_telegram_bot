@@ -1,12 +1,13 @@
 from aiogram import F, Router
-from aiogram.filters import Command
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.filters import Command, Text
 from aiogram.types import (LabeledPrice, Message, PreCheckoutQuery,
-                           ShippingOption, ShippingQuery)
+                           ShippingOption, ShippingQuery, InlineKeyboardButton, CallbackQuery)
 from bot import bot
 from config import TelegramSettings
 from dependency_injector.wiring import Provide, inject
 from use_cases.container import SqlaRepositoriesContainer
-from use_cases.users import SqlaUsersRepository
+from use_cases import SqlaUsersRepository, SqlaCategorysRepository
 
 router = Router()
 
@@ -18,8 +19,45 @@ FAST_SHIPPING = ShippingOption(id='fast', title='Быстрая доставка
 @router.message(Command("start"))
 @inject
 async def cmd_start(message: Message, use_case: SqlaUsersRepository = Provide[SqlaRepositoriesContainer.users_repository]):
-    await use_case.create(message.chat.id, message.chat.username)
-    await message.answer("Hello!")
+    user = await use_case.create(message.chat.id, message.chat.username)
+    if user and user.is_admin:
+        await message.answer("Привет админ!")
+    else:
+        await message.answer("Привет!")
+
+
+@router.message(Command("menu"))
+async def cmd_menu(message: Message):
+    builder = InlineKeyboardBuilder()
+    builder.add(
+        InlineKeyboardButton(
+            text="🏪 К товарам",
+            callback_data="items"),
+        InlineKeyboardButton(
+            text="🛒 Корзина",
+            callback_data="bucket"),
+    )
+    await message.answer(
+        "🏠 Домашняя страница",
+        reply_markup=builder.as_markup()
+    )
+
+
+@router.callback_query(Text("items"))
+@inject
+async def cmd_menu(callback: CallbackQuery, use_case: SqlaCategorysRepository = Provide[SqlaRepositoriesContainer.category_repository]):
+    categories = await use_case.get_all()
+    builder = InlineKeyboardBuilder()
+    for i in categories:
+        builder.add(
+            InlineKeyboardButton(
+                text=i.name,
+                callback_data=f"category_{i.id}"))
+    builder.adjust(1)
+    await callback.message.edit_text(
+        "🏠 Категории",
+        reply_markup=builder.as_markup()
+    )
 
 
 @router.message(Command("dice"))
