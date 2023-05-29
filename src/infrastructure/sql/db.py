@@ -17,10 +17,6 @@ class Database:
             current_task,
         )
 
-    async def create_database(self) -> None:
-        async with self._engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
     @asynccontextmanager
     async def session(
         self,

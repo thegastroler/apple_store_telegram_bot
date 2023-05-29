@@ -1,19 +1,24 @@
+from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import (ContentType, LabeledPrice, Message,
-                           PreCheckoutQuery, ShippingQuery, ShippingOption)
-from config import TelegramSettings
-from aiogram import Router, F
+from aiogram.types import (LabeledPrice, Message, PreCheckoutQuery,
+                           ShippingOption, ShippingQuery)
 from bot import bot
+from config import TelegramSettings
+from dependency_injector.wiring import Provide, inject
+from use_cases.container import SqlaRepositoriesContainer
+from use_cases.users import SqlaUsersRepository
 
 router = Router()
-
 
 PRICES = [LabeledPrice(label='Ноутбук', amount=10000)]
 STANDART_SHIPPING = ShippingOption(id='standart', title='Стандартная доставка', prices=[LabeledPrice(label='Стандартная доставка', amount=25000)])
 FAST_SHIPPING = ShippingOption(id='fast', title='Быстрая доставка', prices=[LabeledPrice(label='Быстрая доставка', amount=50000)])
 
+
 @router.message(Command("start"))
-async def cmd_start(message: Message):
+@inject
+async def cmd_start(message: Message, use_case: SqlaUsersRepository = Provide[SqlaRepositoriesContainer.users_repository]):
+    await use_case.create(message.chat.id, message.chat.username)
     await message.answer("Hello!")
 
 

@@ -1,10 +1,11 @@
-from dependency_injector import containers, providers
+from dependency_injector.containers import DeclarativeContainer
+from dependency_injector.providers import Factory, Singleton
 
 from .config import AsyncDatabaseSettings
 from .db import Database
 
 
-class SqlAlchemyContainer(containers.DeclarativeContainer):
+class SqlAlchemyContainer(DeclarativeContainer):
     settings = AsyncDatabaseSettings()
-    db = providers.Singleton(Database, url=settings.url, debug=settings.debug)
-    session_factory = providers.Factory(db.provided.session)
+    db = Singleton(Database, url=settings.url, debug=settings.debug)
+    session_factory = Factory(db.provided.session)

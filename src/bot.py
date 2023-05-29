@@ -2,14 +2,17 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+from use_cases import container
+from handlers import default_cmds
 
 from config import TelegramSettings
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=TelegramSettings().token)
+bot = Bot(token=TelegramSettings().token, parse_mode="HTML")
 
 
 async def main():
+    container.wire(modules=[default_cmds])
     dp = Dispatcher()
     from handlers import router
     dp.include_router(router)
