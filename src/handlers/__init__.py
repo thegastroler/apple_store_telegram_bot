@@ -1,1 +1,3 @@
-from .default_cmds import router
+from aiogram import Router
+
+router = Router()

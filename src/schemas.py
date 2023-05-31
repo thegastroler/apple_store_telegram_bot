@@ -16,3 +16,17 @@ class CategorySchema(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class ItemSchema(BaseModel):
+    id: int
+    name: str
+    storage: int
+    color: str
+    article: str
+    category_id: int
+    price: int
+    total: int
+
+    class Config:
+        orm_mode = True

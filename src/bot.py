@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher
 
 from config import TelegramSettings
-from handlers import default_cmds
+import handlers
 from use_cases import container
 
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +12,7 @@ bot = Bot(token=TelegramSettings().token, parse_mode="HTML")
 
 
 async def main():
-    container.wire(modules=[default_cmds])
+    container.wire(packages=[handlers])
     dp = Dispatcher()
     from handlers import router
     dp.include_router(router)

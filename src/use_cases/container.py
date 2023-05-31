@@ -1,5 +1,6 @@
 from .users import SqlaUsersRepository
-from .categories import SqlaCategorysRepository
+from .categories import SqlaCategoriesRepository
+from .items import SqlaItemsRepository
 from dependency_injector.containers import DeclarativeContainer
 from dependency_injector.providers import Factory
 from infrastructure.sql.container import SqlAlchemyContainer
@@ -10,5 +11,8 @@ class SqlaRepositoriesContainer(DeclarativeContainer):
         SqlaUsersRepository, session_factory=SqlAlchemyContainer.session_factory.provided
     )
     category_repository = Factory(
-        SqlaCategorysRepository, session_factory=SqlAlchemyContainer.session_factory.provided
+        SqlaCategoriesRepository, session_factory=SqlAlchemyContainer.session_factory.provided
+    )
+    items_repository = Factory(
+        SqlaItemsRepository, session_factory=SqlAlchemyContainer.session_factory.provided
     )
