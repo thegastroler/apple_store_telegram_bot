@@ -8,7 +8,7 @@ from sqlalchemy.sql import expression
 class User(Base):
     __tablename__ = "users"
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, nullable=False)
+    user_id = Column(BigInteger, primary_key=True, unique=True)
     username = Column(VARCHAR(90), nullable=False)
     is_admin = Column(Boolean, default=expression.false(), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

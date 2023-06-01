@@ -2,11 +2,11 @@ from typing import Optional
 from aiogram.filters.callback_data import CallbackData
 
 
-class CategoryCallbackFactory(CallbackData, prefix="category"):
+class CategoryCallbackFactory(CallbackData, prefix="category_id"):
     id: int
 
 
-class ItemIndexCallbackFactory(CallbackData, prefix="item_index"):
+class ItemIndexCategoryCallbackFactory(CallbackData, prefix="item_index_category"):
     item_index: int
     category_id: int
 

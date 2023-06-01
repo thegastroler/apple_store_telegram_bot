@@ -68,7 +68,7 @@ async def items(callback: CallbackQuery, use_case: SqlaCategoriesRepository = Pr
             text=i.name, callback_data=CategoryCallbackFactory(id=i.id, name=i.name)
         )
     builder.button(
-        text="◀️ Назад в главное меню", callback_data="back_to_main"
+        text="« Назад в главное меню", callback_data="back_to_main"
     )
     builder.adjust(1)
     await callback.message.edit_text(

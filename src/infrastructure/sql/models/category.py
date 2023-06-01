@@ -1,7 +1,5 @@
-from datetime import datetime
-
 from infrastructure.sql.db import Base
-from sqlalchemy import VARCHAR, BigInteger, Column, DateTime
+from sqlalchemy import VARCHAR, BigInteger, Column
 
 
 class Category(Base):

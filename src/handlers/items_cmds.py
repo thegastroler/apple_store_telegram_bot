@@ -1,13 +1,14 @@
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dependency_injector.wiring import Provide, inject
-from use_cases import SqlaCategoriesRepository, SqlaItemsRepository
+from use_cases import SqlaCategoriesRepository, SqlaItemsRepository, SqlaShoppingCartRepository
 from use_cases.container import SqlaRepositoriesContainer
+from utils import price_converter
 
-from .. import router
-from ..callback_factories import (CategoryCallbackFactory,
+from . import router
+from .callback_factories import (CategoryCallbackFactory,
                                   ItemIdCallbackFactory,
-                                  ItemIndexCallbackFactory,
+                                  ItemIndexCategoryCallbackFactory,
                                   ItemIndexStorageCallbackFactory)
 
 
@@ -30,11 +31,11 @@ async def item_names(
     for i in items_names:
         builder.button(
             text=i[0],
-            callback_data=ItemIndexCallbackFactory(
+            callback_data=ItemIndexCategoryCallbackFactory(
                 item_index=i[1], category_id=category_id)
         )
     builder.button(
-        text="◀️ Назад в категории", callback_data="items"
+        text="« Назад в категории", callback_data="items"
     )
     builder.adjust(1)
     await callback.message.edit_text(
@@ -43,11 +44,11 @@ async def item_names(
     )
 
 
-@router.callback_query(ItemIndexCallbackFactory.filter())
+@router.callback_query(ItemIndexCategoryCallbackFactory.filter())
 @inject
 async def item_storages(
     callback: CallbackQuery,
-    callback_data: ItemIndexCallbackFactory,
+    callback_data: ItemIndexCategoryCallbackFactory,
     item_use_case: SqlaItemsRepository = Provide[SqlaRepositoriesContainer.items_repository],
     ):
     """
@@ -58,25 +59,39 @@ async def item_storages(
     item_name = item_name[0][0]
     storages = await item_use_case.get_item_storages(item_index)
     builder = InlineKeyboardBuilder()
-    for i in storages:
-        price = f"{str(i[2])[:-5]} {str(i[2])[2:-2]}"
+    if len(storages[0]) == 4 and not storages[0][1]:
+        storage = None
+        price = await price_converter(storages[0][3])
         builder.button(
-            text=f"{i[0]} Гб, {price} руб.",
-            callback_data=ItemIndexStorageCallbackFactory(
-                item_index=item_index, storage=i[0]
-            )
+            text=f"{price} руб.",
+            callback_data=ItemIdCallbackFactory(id=storages[0][0])
         )
+    else:
+        for i in storages:
+            price = await price_converter(i[2])
+            storage = i[0]
+            builder.button(
+                text=f"{storage} Гб, {price} руб.",
+                callback_data=ItemIndexStorageCallbackFactory(
+                    item_index=item_index, storage=storage
+                )
+            )
     builder.button(
-        text="◀️ Назад к товару", callback_data=CategoryCallbackFactory(
+        text="« Назад к товару", callback_data=CategoryCallbackFactory(
             id=callback_data.category_id
         )
     )
     builder.button(
-        text="◀️ Назад в категории", callback_data="items"
+        text="« Назад в категории", callback_data="items"
     )
     builder.adjust(1)
-    await callback.message.edit_text(
-        f"{item_name}, объем памяти:",
+    if storage:
+        return await callback.message.edit_text(
+            f"{item_name}, объем памяти:",
+            reply_markup=builder.as_markup(),
+        )
+    return await callback.message.edit_text(
+        f"{item_name}, цена:",
         reply_markup=builder.as_markup(),
     )
 
@@ -104,15 +119,53 @@ async def item_colors(
             callback_data=ItemIdCallbackFactory(id=i[0])
         )
     builder.button(
-        text="◀️ Назад к выбору памяти", callback_data=ItemIndexCallbackFactory(
+        text="« Назад к выбору памяти", callback_data=ItemIndexCategoryCallbackFactory(
             item_index=item_index, category_id=category_id
         )
     )
     builder.button(
-        text="◀️ Назад в категории", callback_data="items"
+        text="« Назад в категории", callback_data="items"
     )
     builder.adjust(1)
-    await callback.message.edit_text(
-        f"{item_name} / <b>{storage} Гб</b>, цвет:",
+    if storage:
+        return await callback.message.edit_text(
+            f"{item_name} / <b>{storage} Гб</b>, цвет:",
+            reply_markup=builder.as_markup(),
+        )
+    return await callback.message.edit_text(
+        f"{item_name}, цвет:",
+        reply_markup=builder.as_markup(),
+    )
+
+
+@router.callback_query(ItemIdCallbackFactory.filter())
+@inject
+async def item_colors(
+    callback: CallbackQuery,
+    callback_data: ItemIndexStorageCallbackFactory,
+    shopping_cart_use_case: SqlaShoppingCartRepository = Provide[
+        SqlaRepositoriesContainer.shopping_cart_repository
+    ]):
+    """
+    Добавление товара в корзину
+    """
+    user_id = callback.from_user.id
+    item_id = callback_data.id
+    await shopping_cart_use_case.add(user_id, item_id)
+    """
+    доделать
+    """
+    builder = InlineKeyboardBuilder()
+    # builder.button(
+    #     text="« Назад к выбору памяти", callback_data=ItemIndexCategoryCallbackFactory(
+    #         item_index=item_index, category_id=category_id
+    #     )
+    # )
+    builder.button(
+        text="« Назад в категории", callback_data="items"
+    )
+    builder.adjust(1)
+    return await callback.message.edit_text(
+        "Товар добавлен в корзину!",
         reply_markup=builder.as_markup(),
     )
