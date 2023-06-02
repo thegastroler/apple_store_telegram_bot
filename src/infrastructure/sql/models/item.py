@@ -20,7 +20,8 @@ class Item(Base):
 
     price = Column(Integer, nullable=False, default=0)
     total = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(), nullable=False)
+    updated_at = Column(DateTime, onupdate=datetime.now(), nullable=True)
 
     category = relationship("Category", backref="category_id")
 

@@ -1,11 +1,12 @@
 from contextlib import AbstractAsyncContextManager
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from infrastructure.sql import models
-from sqlalchemy import and_, select, insert, update, func
+from sqlalchemy import and_, select, insert, update, desc
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils import make_order_id
-
+from utils import make_order
+from schemas import OrderIdSchema, IdQuantitySchema, TotalSchema
 
 class SqlaShoppingCartRepository():
     m = models.ShoppingCart
@@ -14,95 +15,82 @@ class SqlaShoppingCartRepository():
         self.session_factory = session_factory
 
     async def add(self, user_id: int, item_id: int) -> None:
-        unpaid_order_id = await self.get_last_unpaid_order(user_id)
-        if not unpaid_order_id:
-            last_order_id = await self.get_last_paid_order(user_id)
-            if not last_order_id:
-                order_id = await make_order_id(user_id=user_id)
+        unpaid_order = await self.get_unpaid_order(user_id)
+        if unpaid_order:
+            order = unpaid_order.order
+            id_quantity = await self.get_id_quantity(order, item_id)
+            if id_quantity:
+                item_total = await self.get_item_quantity(order, item_id)
+                if item_total.total > id_quantity.quantity:
+                    return await self.increase_quantity(order, item_id)
             else:
-                order_id = await make_order_id(order_id=last_order_id)
-        if unpaid_order_id:
-            order_id = unpaid_order_id[0]
-            """
-            добавить проверку на наличие записи с order_id и item_id
-            """
-            return await self.increase_quantity(order_id, item_id)
+                return await self.insert_row(user_id, item_id, order)
         else:
-            async with self.session_factory() as session:
-                query = insert(self.m)\
-                    .values({
-                        "user_id": user_id,
-                        "item_id": item_id,
-                        "order_id": order_id,
-                        "quantity": 1
-                    })
-                await session.execute(query)
-                await session.commit()
+            last_order = await self.get_last_paid_order(user_id)
+            if last_order:
+                order = await make_order(order=last_order.order)
+            else:
+                order = await make_order(user_id=user_id)
+            await self.insert_row(user_id, item_id, order)
 
-    async def get_last_unpaid_order(self, user_id: int) -> List[Tuple[str]]:
+    async def insert_row(self, user_id: int, item_id: int, order: str):
         async with self.session_factory() as session:
-            query = select(self.m.order_id)\
+            query = insert(self.m)\
+                .values({
+                    "user_id": user_id,
+                    "item_id": item_id,
+                    "order": order,
+                    "quantity": 1
+                })
+            await session.execute(query)
+            await session.commit()
+
+    async def get_unpaid_order(self, user_id: int) -> Optional[OrderIdSchema]:
+        async with self.session_factory() as session:
+            query = select(self.m.order)\
                 .filter(and_(self.m.paid == False, self.m.user_id == user_id))
             result = await session.execute(query)
-            return result.one_or_none()
+            result = result.first()
+            order = result[0] if result else None
+            return OrderIdSchema(order=order) if order else None
 
-    async def get_last_paid_order(self, user_id: int) -> List[Tuple[str]]:
+    async def get_last_paid_order(self, user_id: int) -> Optional[OrderIdSchema]:
         async with self.session_factory() as session:
-            query = select(self.m.order_id)\
-                .filter(and_(self.m.paid == True, self.m.user_id == user_id))
+            query = select(self.m.order)\
+                .filter(and_(self.m.paid == True, self.m.user_id == user_id))\
+                .order_by(desc(self.m.order))
             result = await session.execute(query)
-            return result.one_or_none()
+            result = result.first()
+            order = result[0] if result else None
+            return OrderIdSchema(order=order) if order else None
 
-    async def increase_quantity(self, order_id: str, item_id: int) -> List[Tuple[str]]:
+    async def increase_quantity(self, order: str, item_id: int) -> List[Tuple[str]]:
         async with self.session_factory() as session:
             query = update(self.m).\
                 where(and_(
-                    self.m.order_id == order_id,
+                    self.m.order == order,
                     self.m.item_id == item_id)).\
                 values({"quantity": self.m.quantity + 1})
             await session.execute(query)
             await session.commit()
 
-
-
-
-
-    async def get_item_storages(self, item_index: int) -> List[Tuple[str]]:
+    async def get_id_quantity(self, order: str, item_id: int) -> Optional[IdQuantitySchema]:
         async with self.session_factory() as session:
-            query = select(self.m.storage, self.m.name, self.m.price)\
-                .filter(and_(self.m.item_index == item_index,  self.m.total > 0))\
-                .distinct()\
-                .order_by(self.m.storage)
+            query = select(self.m.id, self.m.quantity).\
+                where(and_(
+                    self.m.order == order,
+                    self.m.item_id == item_id))
             result = await session.execute(query)
-            result = result.fetchall()
-            if len(result) == 1 and not result[0][0]:
-                query = select(self.m.id, self.m.storage, self.m.name, self.m.price)\
-                    .filter(and_(self.m.item_index == item_index,  self.m.total > 0))\
-                    .distinct()
-                result = await session.execute(query)
-                result = result.fetchall()
-            return result
+            result = result.first()
+            return IdQuantitySchema(id=result[0], quantity=result[1]) if result else None
 
-    async def get_item_name_by_index(self, item_index: int) -> List[Tuple[str]]:
+    async def get_item_quantity(self, order: str, item_id: int) -> List[Tuple[str]]:
         async with self.session_factory() as session:
-            query = select(self.m.name)\
-                .filter(self.m.item_index == item_index)\
-                .distinct()
+            query = select(self.m).\
+                where(and_(
+                    self.m.order == order,
+                    self.m.item_id == item_id)).\
+                options(selectinload(self.m.item))
             result = await session.execute(query)
-            return result.fetchall()
-
-    async def get_item_colors(self, item_index: int, storage: int) -> List[Tuple[str]]:
-        async with self.session_factory() as session:
-            query = select(self.m.id, self.m.color, self.m.name)\
-                .filter(and_(self.m.item_index == item_index, self.m.storage == storage))\
-                .distinct()\
-                .order_by(self.m.id)
-            result = await session.execute(query)
-            return result.fetchall()
-
-    async def get_category_by_item_index(self, item_index: int) -> Tuple[int]:
-        async with self.session_factory() as session:
-            query = select(self.m.category_id)\
-                .filter(self.m.item_index == item_index)
-            result = await session.execute(query)
-            return result.first()
+            result = result.scalars()
+            return [TotalSchema(total=i.item.total) for i in result][0]

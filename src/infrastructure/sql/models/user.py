@@ -11,7 +11,8 @@ class User(Base):
     user_id = Column(BigInteger, primary_key=True, unique=True)
     username = Column(VARCHAR(90), nullable=False)
     is_admin = Column(Boolean, default=expression.false(), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(), nullable=False)
+    updated_at = Column(DateTime, onupdate=datetime.now(), nullable=True)
 
     class Config:
         orm_mode = True

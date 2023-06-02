@@ -1,7 +1,8 @@
 from contextlib import AbstractAsyncContextManager
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from infrastructure.sql import models
+from schemas import ItemStorages
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +21,7 @@ class SqlaItemsRepository():
             result = await session.execute(query)
             return result.fetchall()
 
-    async def get_item_storages(self, item_index: int) -> List[Tuple[str]]:
+    async def get_item_storages(self, item_index: int) -> List[Optional[ItemStorages]]:
         async with self.session_factory() as session:
             query = select(self.m.storage, self.m.name, self.m.price)\
                 .filter(and_(self.m.item_index == item_index,  self.m.total > 0))\
@@ -34,7 +35,14 @@ class SqlaItemsRepository():
                     .distinct()
                 result = await session.execute(query)
                 result = result.fetchall()
-            return result
+            return [
+                ItemStorages(
+                    id=i.id,
+                    storage=i.storage,
+                    name=i.name,
+                    price=i.price
+                )
+                for i in result]
 
     async def get_item_name_by_index(self, item_index: int) -> List[Tuple[str]]:
         async with self.session_factory() as session:

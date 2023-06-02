@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -30,3 +31,23 @@ class ItemSchema(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class OrderIdSchema(BaseModel):
+    order: str
+
+
+class IdQuantitySchema(BaseModel):
+    id: int
+    quantity: int
+
+
+class TotalSchema(BaseModel):
+    total: int
+
+
+class ItemStorages(BaseModel):
+    id: Optional[int]
+    storage: Optional[int]
+    name: str
+    price: int

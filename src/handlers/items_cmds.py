@@ -10,6 +10,7 @@ from .callback_factories import (CategoryCallbackFactory,
                                   ItemIdCallbackFactory,
                                   ItemIndexCategoryCallbackFactory,
                                   ItemIndexStorageCallbackFactory)
+from utils import make_order
 
 
 @router.callback_query(CategoryCallbackFactory.filter())
@@ -32,7 +33,7 @@ async def item_names(
         builder.button(
             text=i[0],
             callback_data=ItemIndexCategoryCallbackFactory(
-                item_index=i[1], category_id=category_id)
+                item_index=i[1], category=category_id)
         )
     builder.button(
         text="« Назад в категории", callback_data="items"
@@ -49,27 +50,37 @@ async def item_names(
 async def item_storages(
     callback: CallbackQuery,
     callback_data: ItemIndexCategoryCallbackFactory,
-    item_use_case: SqlaItemsRepository = Provide[SqlaRepositoriesContainer.items_repository],
+    use_case: SqlaItemsRepository = Provide[SqlaRepositoriesContainer.items_repository],
     ):
     """
     Список объемов памяти и цен для выбранного товара
     """
     item_index = callback_data.item_index
-    item_name = await item_use_case.get_item_name_by_index(item_index)
+    item_name = await use_case.get_item_name_by_index(item_index)
     item_name = item_name[0][0]
-    storages = await item_use_case.get_item_storages(item_index)
+    storages = await use_case.get_item_storages(item_index)
     builder = InlineKeyboardBuilder()
-    if len(storages[0]) == 4 and not storages[0][1]:
+    if storages[0].id and not storages[0].storage:
         storage = None
-        price = await price_converter(storages[0][3])
-        builder.button(
-            text=f"{price} руб.",
-            callback_data=ItemIdCallbackFactory(id=storages[0][0])
-        )
+        price = await price_converter(storages[0].price)
+        if len(storages) == 1:
+            builder.button(
+                text=f"{price} руб.",
+                callback_data=ItemIdCallbackFactory(
+                    id=storages[0].id, item_index=item_index, no_color=True, category=callback_data.category
+                )
+            )
+        else:
+            builder.button(
+                text=f"{price} руб.",
+                callback_data=ItemIndexStorageCallbackFactory(
+                    item_index=item_index, storage=None
+                )
+            )
     else:
         for i in storages:
-            price = await price_converter(i[2])
-            storage = i[0]
+            price = await price_converter(i.price)
+            storage = i.storage
             builder.button(
                 text=f"{storage} Гб, {price} руб.",
                 callback_data=ItemIndexStorageCallbackFactory(
@@ -78,7 +89,7 @@ async def item_storages(
             )
     builder.button(
         text="« Назад к товару", callback_data=CategoryCallbackFactory(
-            id=callback_data.category_id
+            id=callback_data.category
         )
     )
     builder.button(
@@ -101,26 +112,28 @@ async def item_storages(
 async def item_colors(
     callback: CallbackQuery,
     callback_data: ItemIndexStorageCallbackFactory,
-    item_use_case: SqlaItemsRepository = Provide[SqlaRepositoriesContainer.items_repository],
+    use_case: SqlaItemsRepository = Provide[SqlaRepositoriesContainer.items_repository],
     ):
     """
     Список расцветок для выбранного товара
     """
     item_index = callback_data.item_index
     storage = callback_data.storage
-    category_id = await item_use_case.get_category_by_item_index(item_index)
+    category_id = await use_case.get_category_by_item_index(item_index)
     category_id = category_id[0]
-    colors = await item_use_case.get_item_colors(item_index, storage)
+    colors = await use_case.get_item_colors(item_index, storage)
     item_name = colors[0][2]
     builder = InlineKeyboardBuilder()
     for i in colors:
         builder.button(
             text=f"{i[1]}",
-            callback_data=ItemIdCallbackFactory(id=i[0])
+            callback_data=ItemIdCallbackFactory(
+                id=i[0], item_index=item_index, storage=storage
+            )
         )
     builder.button(
         text="« Назад к выбору памяти", callback_data=ItemIndexCategoryCallbackFactory(
-            item_index=item_index, category_id=category_id
+            item_index=item_index, category=category_id
         )
     )
     builder.button(
@@ -142,8 +155,8 @@ async def item_colors(
 @inject
 async def item_colors(
     callback: CallbackQuery,
-    callback_data: ItemIndexStorageCallbackFactory,
-    shopping_cart_use_case: SqlaShoppingCartRepository = Provide[
+    callback_data: ItemIdCallbackFactory,
+    use_case: SqlaShoppingCartRepository = Provide[
         SqlaRepositoriesContainer.shopping_cart_repository
     ]):
     """
@@ -151,16 +164,43 @@ async def item_colors(
     """
     user_id = callback.from_user.id
     item_id = callback_data.id
-    await shopping_cart_use_case.add(user_id, item_id)
-    """
-    доделать
-    """
+    unpaid_order = await use_case.get_unpaid_order(user_id)
+
+    if unpaid_order:
+        order = unpaid_order.order
+        id_quantity = await use_case.get_id_quantity(order, item_id)
+        if id_quantity:
+            item_total = await use_case.get_item_quantity(order, item_id)
+            if item_total.total > id_quantity.quantity:
+                await use_case.increase_quantity(order, item_id)
+            else:
+                ...
+        else:
+            await use_case.insert_row(user_id, item_id, order)
+    else:
+        last_order = await use_case.get_last_paid_order(user_id)
+        if last_order:
+            order = await make_order(order=last_order.order)
+        else:
+            order = await make_order(user_id=user_id)
+        await use_case.insert_row(user_id, item_id, order)
+
+    item_index = callback_data.item_index
+    storage = callback_data.storage
+    category = callback_data.category
     builder = InlineKeyboardBuilder()
-    # builder.button(
-    #     text="« Назад к выбору памяти", callback_data=ItemIndexCategoryCallbackFactory(
-    #         item_index=item_index, category_id=category_id
-    #     )
-    # )
+    if callback_data.no_color:
+        builder.button(
+            text="« Назад", callback_data=ItemIndexCategoryCallbackFactory(
+                item_index=item_index, category=category
+            )
+        )
+    else:
+        builder.button(
+            text="« Назад к выбору цвета", callback_data=ItemIndexStorageCallbackFactory(
+                item_index=item_index, storage=storage
+            )
+        )
     builder.button(
         text="« Назад в категории", callback_data="items"
     )
