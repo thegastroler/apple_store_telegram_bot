@@ -6,8 +6,8 @@ from sqlalchemy.orm import relationship, aliased
 from sqlalchemy.sql import expression
 
 
-class ShoppingCart(Base):
-    __tablename__ = "shopping_cart"
+class ShoppingList(Base):
+    __tablename__ = "shopping_list"
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=False)
     item_id = Column(BigInteger, ForeignKey("items.id", ondelete="SET NULL"), nullable=False)
@@ -17,7 +17,7 @@ class ShoppingCart(Base):
     created_at = Column(DateTime, default=datetime.now(), nullable=False)
     updated_at = Column(DateTime, onupdate=datetime.now(), nullable=True)
 
-    user = relationship("User", backref="shopping_cart_user_id")
+    user = relationship("User", backref="shopping_list_user_id")
     item = relationship("Item", backref="item_id")
 
     class Config:

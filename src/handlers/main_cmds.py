@@ -21,12 +21,12 @@ def main_keyboard():
     """
     builder = InlineKeyboardBuilder()
     builder.button(
-        text="🏪 К товарам",
+        text="🛒 К покупкам",
         callback_data="items"
     )
     builder.button(
-        text="🛒 Корзина",
-        callback_data="shopping_cart"
+        text="🧺 Корзина",
+        callback_data="shopping_list"
     )
     return builder.as_markup()
 
@@ -50,7 +50,7 @@ async def cmd_main(message: Message):
     Главное меню
     """
     await message.answer(
-        "🏠 Домашняя страница",
+        "🏠 Главное меню",
         reply_markup=main_keyboard()
     )
 
@@ -72,7 +72,7 @@ async def items(callback: CallbackQuery, use_case: SqlaCategoriesRepository = Pr
     )
     builder.adjust(1)
     await callback.message.edit_text(
-        "🏠 Категории",
+        "Категории",
         reply_markup=builder.as_markup()
     )
 
@@ -83,16 +83,16 @@ async def back_to_main(callback: CallbackQuery):
     Кнопка "Назад в главное меню из Категорий"
     """
     await callback.message.edit_text(
-        "🏠 Домашняя страница",
+        "🏠 Главное меню",
         reply_markup=main_keyboard()
     )
 
 
-@router.message(Command("buy"))
+@router.message(Command("pay"))
 async def cmd_buy(message: Message):
     await message.answer_invoice(
-        title='Laptop',
-        description='Игровой ноутбук',
+        title='title',
+        description='description',
         provider_token=TelegramSettings().pay_token,
         currency='RUB',
         need_email=True,

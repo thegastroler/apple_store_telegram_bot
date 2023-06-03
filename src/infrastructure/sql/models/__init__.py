@@ -1,4 +1,4 @@
 from .user import User
 from .item import Item
 from .category import Category
-from .shopping_cart import ShoppingCart
+from .shopping_list import ShoppingList

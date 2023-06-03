@@ -21,7 +21,6 @@ FAST_SHIPPING = ShippingOption(
     ])
 
 
-
 @router.shipping_query(lambda query: True)
 async def shipping_process(shipping: ShippingQuery):
     if shipping.shipping_address.country_code != 'RU':

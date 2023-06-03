@@ -1,16 +1,16 @@
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dependency_injector.wiring import Provide, inject
-from use_cases import SqlaCategoriesRepository, SqlaItemsRepository, SqlaShoppingCartRepository
+from use_cases import (SqlaCategoriesRepository, SqlaItemsRepository,
+                       SqlaShoppingListRepository)
 from use_cases.container import SqlaRepositoriesContainer
-from utils import price_converter
+from utils import make_order, price_converter
 
 from . import router
 from .callback_factories import (CategoryCallbackFactory,
-                                  ItemIdCallbackFactory,
-                                  ItemIndexCategoryCallbackFactory,
-                                  ItemIndexStorageCallbackFactory)
-from utils import make_order
+                                 ItemIdCallbackFactory,
+                                 ItemIndexCategoryCallbackFactory,
+                                 ItemIndexStorageCallbackFactory)
 
 
 @router.callback_query(CategoryCallbackFactory.filter())
@@ -109,7 +109,7 @@ async def item_storages(
 
 @router.callback_query(ItemIndexStorageCallbackFactory.filter())
 @inject
-async def item_colors(
+async def add_to_shopping_list(
     callback: CallbackQuery,
     callback_data: ItemIndexStorageCallbackFactory,
     use_case: SqlaItemsRepository = Provide[SqlaRepositoriesContainer.items_repository],
@@ -153,11 +153,11 @@ async def item_colors(
 
 @router.callback_query(ItemIdCallbackFactory.filter())
 @inject
-async def item_colors(
+async def add_to_shopping_list(
     callback: CallbackQuery,
     callback_data: ItemIdCallbackFactory,
-    use_case: SqlaShoppingCartRepository = Provide[
-        SqlaRepositoriesContainer.shopping_cart_repository
+    use_case: SqlaShoppingListRepository = Provide[
+        SqlaRepositoriesContainer.shopping_list_repository
     ]):
     """
     Добавление товара в корзину
@@ -191,7 +191,7 @@ async def item_colors(
     builder = InlineKeyboardBuilder()
     builder.button(
         text="🛒 Корзина",
-        callback_data="shopping_cart"
+        callback_data="shopping_list"
     )
     if callback_data.no_color:
         builder.button(

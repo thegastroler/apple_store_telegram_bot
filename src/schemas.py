@@ -54,7 +54,7 @@ class ItemStorageSchema(BaseModel):
     price: int
 
 
-class ItemShoppingCartSchema(BaseModel):
+class ItemShoppingListSchema(BaseModel):
     id: int
     name: str
     storage: Optional[int]
@@ -66,6 +66,7 @@ class ItemShoppingCartSchema(BaseModel):
     class Config:
         orm_mode = True
 
-class ShoppingCartSchema(BaseModel):
-    items: Optional[List[ItemShoppingCartSchema]]
+
+class ShoppingListSchema(BaseModel):
+    items: Optional[List[ItemShoppingListSchema]]
     total: Optional[int]
