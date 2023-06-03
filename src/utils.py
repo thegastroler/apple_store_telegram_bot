@@ -2,9 +2,9 @@ from typing import Optional
 
 
 async def price_converter(price: int) -> str:
-    if len(str(price)) > 6:
-        return f"{str(price)[:-5]} {str(price)[-5:-2]}"
-    return f"{str(price)[:-2]}"
+    if len(str(price)) > 4:
+        return f"{str(price)[:-3]} {str(price)[-3:]}"
+    return str(price)
 
 
 async def make_order(user_id: Optional[int] = None, order: Optional[str] = None) -> str:

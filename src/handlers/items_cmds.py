@@ -174,7 +174,7 @@ async def item_colors(
             if item_total.total > id_quantity.quantity:
                 await use_case.increase_quantity(order, item_id)
             else:
-                ...
+                ... # TODO
         else:
             await use_case.insert_row(user_id, item_id, order)
     else:
@@ -189,6 +189,10 @@ async def item_colors(
     storage = callback_data.storage
     category = callback_data.category
     builder = InlineKeyboardBuilder()
+    builder.button(
+        text="🛒 Корзина",
+        callback_data="shopping_cart"
+    )
     if callback_data.no_color:
         builder.button(
             text="« Назад", callback_data=ItemIndexCategoryCallbackFactory(

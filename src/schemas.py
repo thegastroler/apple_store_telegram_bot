@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import List, Optional
+
 from pydantic import BaseModel
 
 
@@ -42,12 +43,29 @@ class IdQuantitySchema(BaseModel):
     quantity: int
 
 
-class TotalSchema(BaseModel):
+class ItemTotalSchema(BaseModel):
     total: int
 
 
-class ItemStorages(BaseModel):
+class ItemStorageSchema(BaseModel):
     id: Optional[int]
     storage: Optional[int]
     name: str
     price: int
+
+
+class ItemShoppingCartSchema(BaseModel):
+    id: int
+    name: str
+    storage: Optional[int]
+    color: Optional[str]
+    quantity: int
+    price: int
+    subtotal: int
+
+    class Config:
+        orm_mode = True
+
+class ShoppingCartSchema(BaseModel):
+    items: Optional[List[ItemShoppingCartSchema]]
+    total: Optional[int]

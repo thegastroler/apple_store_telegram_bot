@@ -2,11 +2,11 @@ from contextlib import AbstractAsyncContextManager
 from typing import Callable, List, Optional, Tuple
 
 from infrastructure.sql import models
-from sqlalchemy import and_, select, insert, update, desc
+from sqlalchemy import and_, select, insert, update, desc, label
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from utils import make_order
-from schemas import OrderIdSchema, IdQuantitySchema, TotalSchema
+from schemas import OrderIdSchema, IdQuantitySchema, ItemTotalSchema, ItemShoppingCartSchema, ShoppingCartSchema
 
 class SqlaShoppingCartRepository():
     m = models.ShoppingCart
@@ -93,4 +93,38 @@ class SqlaShoppingCartRepository():
                 options(selectinload(self.m.item))
             result = await session.execute(query)
             result = result.scalars()
-            return [TotalSchema(total=i.item.total) for i in result][0]
+            return [ItemTotalSchema(total=i.item.total) for i in result][0]
+
+    async def get_shopping_cart(self, user_id: int) -> ShoppingCartSchema:
+        """
+            select i.id, i.name, i.storage, i.color, sc.quantity , i.price, sc.quantity * i.price as subtotal
+            from shopping_cart sc
+            join items i 
+                on i.id = sc.item_id 
+            where sc.user_id = 382568583 and sc.paid = false
+        """
+        i = models.Item
+        sc = self.m
+        async with self.session_factory() as session:
+            query = select(
+                i.id, i.name, i.storage, i.color, sc.quantity , i.price, label("subtotal", sc.quantity * i.price))\
+                .select_from(sc)\
+                .join(i, i.id == sc.item_id)\
+                .where(and_(sc.user_id == user_id, sc.paid == False))
+            result = await session.execute(query)
+            result = result.fetchall()
+            total = sum([i.subtotal for i in result])
+            return ShoppingCartSchema(
+                items=[
+                    ItemShoppingCartSchema(
+                        id=i.id,
+                        name=i.name,
+                        storage=i.storage,
+                        color=i.color,
+                        quantity=i.quantity,
+                        price=i.price,
+                        subtotal=i.subtotal,
+                    )
+                for i in result],
+                total=total
+            )

@@ -20,13 +20,13 @@ def main_keyboard():
     Клавиатура главного меню
     """
     builder = InlineKeyboardBuilder()
-    builder.add(
-        InlineKeyboardButton(
-            text="🏪 К товарам",
-            callback_data="items"),
-        InlineKeyboardButton(
-            text="🛒 Корзина",
-            callback_data="bucket"),
+    builder.button(
+        text="🏪 К товарам",
+        callback_data="items"
+    )
+    builder.button(
+        text="🛒 Корзина",
+        callback_data="shopping_cart"
     )
     return builder.as_markup()
 
