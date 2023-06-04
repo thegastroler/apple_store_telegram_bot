@@ -1,18 +1,14 @@
+from aiogram.filters import Text
+from aiogram import F
 from aiogram.types import CallbackQuery
-from aiogram.filters import Command, Text
-from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardButton
 from dependency_injector.wiring import Provide, inject
-from use_cases import SqlaCategoriesRepository, SqlaItemsRepository, SqlaShoppingListRepository
+from use_cases import SqlaShoppingListRepository
 from use_cases.container import SqlaRepositoriesContainer
 from utils import price_converter
 
 from . import router
-from .callback_factories import (CategoryCallbackFactory,
-                                  ItemIdCallbackFactory,
-                                  ItemIndexCategoryCallbackFactory,
-                                  ItemIndexStorageCallbackFactory)
-from utils import make_order
+from .callback_factories import EditShoppingListCallbackFactory
 
 
 @router.callback_query(Text("shopping_list"))
@@ -50,7 +46,7 @@ async def shopping_list(
     msg.append(f"<b>Итого:</b> <b><i>{total} руб.</i></b>")
     msg = "\n\n".join(msg)
     builder.button(
-        text="📝 Редактировать", callback_data="edit_shopping_list"
+        text="📝 Редактировать", callback_data=EditShoppingListCallbackFactory(num=1)
     )
     builder.button(
         text="« Назад в главное меню", callback_data="back_to_main"
@@ -59,10 +55,51 @@ async def shopping_list(
     await callback.message.edit_text(msg, reply_markup=builder.as_markup())
 
 
-@router.callback_query(Text("edit_shopping_list"))
+@router.callback_query(EditShoppingListCallbackFactory.filter(F.num))
 @inject
 async def edit_shopping_list(
     callback: CallbackQuery,
+    callback_data: EditShoppingListCallbackFactory,
     use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
     ):
-    ...
+    """
+    Редактирование корзины
+    """
+    user_id = callback.from_user.id
+    num = callback_data.num
+    order = await use_case.get_unpaid_order(user_id)
+    item = await use_case.get_item_from_shopping_list(order.order, num)
+
+    text = item.name
+    text = f"{text} / {item.storage} Гб" if item.storage else text
+    text = f"{text} / {item.color}" if item.color else text
+    price = await price_converter(item.price)
+    subtotal = await price_converter(item.subtotal)
+    total = f"\n🧾 <b><i>{item.quantity} * {price} = {subtotal} руб.</i></b>"
+    text += total
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Удалить", callback_data=EditShoppingListCallbackFactory(id=item.id, all=True))
+    builder.button(text="➖", callback_data=EditShoppingListCallbackFactory(id=item.id, decrease=True))
+    if item.quantity < item.total:
+        builder.button(text="➕", callback_data=EditShoppingListCallbackFactory(id=item.id, increase=True))
+    if item.len_shopping_list > 1:
+        builder.button(text="Следующий товар »", callback_data="shopping_list")
+    builder.button(text="« Назад в корзину", callback_data="shopping_list")
+    builder.button(text="« Назад в главное меню", callback_data="back_to_main")
+
+    if item.quantity < item.total:
+        builder.adjust(3, 1)
+    else:
+        builder.adjust(2, 1)
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+
+
+@router.callback_query(EditShoppingListCallbackFactory.filter(F.id))
+@inject
+async def edit_shopping_list(
+    callback: CallbackQuery,
+    callback_data: EditShoppingListCallbackFactory,
+    use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
+    ):
+    user_id = callback.from_user.id

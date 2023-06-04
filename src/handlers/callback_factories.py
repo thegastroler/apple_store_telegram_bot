@@ -22,3 +22,11 @@ class ItemIdCallbackFactory(CallbackData, prefix="item_id"):
     storage: Optional[int]
     no_color: Optional[bool]
     category: Optional[int]
+
+
+class EditShoppingListCallbackFactory(CallbackData, prefix="edit_shopping_list"):
+    id: Optional[int]
+    decrease: Optional[bool]
+    increase: Optional[bool]
+    all: Optional[bool]
+    num: Optional[int]

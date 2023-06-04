@@ -55,7 +55,6 @@ class ItemStorageSchema(BaseModel):
 
 
 class ItemShoppingListSchema(BaseModel):
-    id: int
     name: str
     storage: Optional[int]
     color: Optional[str]
@@ -63,10 +62,13 @@ class ItemShoppingListSchema(BaseModel):
     price: int
     subtotal: int
 
-    class Config:
-        orm_mode = True
-
 
 class ShoppingListSchema(BaseModel):
     items: Optional[List[ItemShoppingListSchema]]
     total: Optional[int]
+
+
+class EditItemShoppingListSchema(ItemShoppingListSchema):
+    id: int
+    total: int
+    len_shopping_list: int
