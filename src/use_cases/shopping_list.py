@@ -5,7 +5,7 @@ from infrastructure.sql import models
 from schemas import (EditItemShoppingListSchema, IdQuantitySchema,
                      ItemShoppingListSchema, ItemTotalSchema, OrderIdSchema,
                      ShoppingListSchema)
-from sqlalchemy import and_, desc, insert, label, select, update
+from sqlalchemy import and_, desc, insert, label, select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from utils import make_order
@@ -77,6 +77,43 @@ class SqlaShoppingListRepository():
             await session.execute(query)
             await session.commit()
 
+    async def increase_quantity_by_item_id(self, sl_id: int) -> List[Tuple[str]]:
+        async with self.session_factory() as session:
+            query = update(self.m).\
+                where(self.m.id == sl_id).\
+                values({"quantity": self.m.quantity + 1})
+            await session.execute(query)
+            await session.commit()
+
+    async def decrease_quantity_by_item_id(self, id: int) -> Optional[EditItemShoppingListSchema]:
+        i = models.Item
+        sl = self.m
+        async with self.session_factory() as session:
+            m = self.m
+            query = update(self.m).\
+                where(self.m.id == id).\
+                values({"quantity": self.m.quantity - 1})
+            await session.execute(query)
+            await session.commit()
+            query = select(
+                sl.id, i.name, i.storage, i.color, sl.quantity , i.price, i.total, label("subtotal", sl.quantity * i.price))\
+                .select_from(sl)\
+                .join(i, i.id == sl.item_id)\
+                .where(m.id == id)
+            result = await session.execute(query)
+            result = result.fetchall()
+            return [EditItemShoppingListSchema(
+                id=i.id,
+                name=i.name,
+                storage=i.storage,
+                color=i.color,
+                quantity=i.quantity,
+                price=i.price,
+                subtotal=i.subtotal,
+                total=i.total,
+                len_shopping_list=len(result)
+            ) for i in result][0] if result else None
+
     async def get_id_quantity(self, order: str, item_id: int) -> Optional[IdQuantitySchema]:
         async with self.session_factory() as session:
             query = select(self.m.id, self.m.quantity).\
@@ -98,12 +135,13 @@ class SqlaShoppingListRepository():
             result = result.scalars()
             return [ItemTotalSchema(total=i.item.total) for i in result][0]
 
-    async def get_shopping_list(self, user_id: int) -> ShoppingListSchema:
+    async def get_shopping_list(self, user_id: int) -> Optional[ShoppingListSchema]:
         i = models.Item
         sl = self.m
         async with self.session_factory() as session:
             query = select(
-                i.name, i.storage, i.color, sl.quantity, i.price, label("subtotal", sl.quantity * i.price))\
+                i.name, i.storage, i.color, sl.quantity, i.price, label("subtotal", sl.quantity * i.price), sl.order
+                )\
                 .select_from(sl)\
                 .join(i, i.id == sl.item_id)\
                 .where(and_(sl.user_id == user_id, sl.paid == False))\
@@ -111,10 +149,11 @@ class SqlaShoppingListRepository():
             result = await session.execute(query)
             result = result.fetchall()
             total = sum([i.subtotal for i in result])
+            order = [i.order for i in result]
+            order = order[0] if order else None
             return ShoppingListSchema(
                 items=[
                     ItemShoppingListSchema(
-                        # id=i.id,
                         name=i.name,
                         storage=i.storage,
                         color=i.color,
@@ -123,10 +162,11 @@ class SqlaShoppingListRepository():
                         subtotal=i.subtotal,
                     )
                 for i in result],
-                total=total
+                total=total,
+                order=order
             )
 
-    async def get_item_from_shopping_list(self, order: str, number: int) -> EditItemShoppingListSchema:
+    async def get_item_from_shopping_list(self, order: str, num: int) -> EditItemShoppingListSchema:
         i = models.Item
         sl = self.m
         async with self.session_factory() as session:
@@ -149,7 +189,13 @@ class SqlaShoppingListRepository():
                 total=i.total,
                 len_shopping_list=len(result)
             ) for i in result]
-            if len(result) >= number:
-                return result[number]
+            if len(result) >= num:
+                return result[num - 1]
             else:
                 return result[0]
+
+    async def del_item(self, sl_id: int) -> None:
+        async with self.session_factory() as session:
+            query = delete(self.m).filter(self.m.id == sl_id)
+            await session.execute(query)
+            await session.commit()

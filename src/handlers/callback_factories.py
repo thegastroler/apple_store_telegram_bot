@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 from aiogram.filters.callback_data import CallbackData
 
 
@@ -24,9 +24,8 @@ class ItemIdCallbackFactory(CallbackData, prefix="item_id"):
     category: Optional[int]
 
 
-class EditShoppingListCallbackFactory(CallbackData, prefix="edit_shopping_list"):
+class EditShoppingListCallbackFactory(CallbackData, prefix="edit_sl"):
     id: Optional[int]
-    decrease: Optional[bool]
-    increase: Optional[bool]
-    all: Optional[bool]
+    order: str
+    action: Optional[Literal['decr', 'incr', 'del']]
     num: Optional[int]

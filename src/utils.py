@@ -2,8 +2,10 @@ from typing import Optional
 
 
 async def price_converter(price: int) -> str:
-    if len(str(price)) > 4:
+    if 4 < len(str(price)) < 7:
         return f"{str(price)[:-3]} {str(price)[-3:]}"
+    elif len(str(price)) >= 7:
+        return f"{str(price)[:-6]} {str(price)[-6:-3]} {str(price)[-3:]}"
     return str(price)
 
 

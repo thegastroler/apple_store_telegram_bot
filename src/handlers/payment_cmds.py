@@ -1,24 +1,51 @@
 from aiogram import F
-from aiogram.types import (LabeledPrice, Message, PreCheckoutQuery,
-                           ShippingOption, ShippingQuery)
+from aiogram.filters import Command, Text
+from aiogram.types import (CallbackQuery, LabeledPrice, Message,
+                           PreCheckoutQuery, ShippingOption, ShippingQuery)
 from bot import bot
+from config import TelegramSettings
+from dependency_injector.wiring import Provide, inject
+from use_cases import SqlaCategoriesRepository, SqlaUsersRepository
+from use_cases.container import SqlaRepositoriesContainer
+from use_cases.shopping_list import SqlaShoppingListRepository
 
 from . import router
+from .callback_factories import CategoryCallbackFactory
 
 STANDART_SHIPPING = ShippingOption(
     id='standart',
     title='Стандартная доставка',
     prices=[LabeledPrice(
         label='Стандартная доставка',
-        amount=25000)
+        amount=50000)
     ])
 FAST_SHIPPING = ShippingOption(
     id='fast',
     title='Быстрая доставка',
     prices=[LabeledPrice(
         label='Быстрая доставка',
-        amount=50000)
+        amount=200000)
     ])
+
+PRICES = [LabeledPrice(label='Ноутбук', amount=10000)]
+
+
+@router.callback_query(Text("pay"))
+async def pay(
+    callback: CallbackQuery,
+    use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
+    ):
+    await callback.message.answer_invoice(
+        title='title',
+        description='description',
+        provider_token=TelegramSettings().pay_token,
+        currency='RUB',
+        need_email=True,
+        need_shipping_address=True,
+        is_flexible=True,
+        prices=PRICES,
+        payload='some_invoice'
+    )
 
 
 @router.shipping_query(lambda query: True)

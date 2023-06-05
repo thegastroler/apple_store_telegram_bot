@@ -66,6 +66,7 @@ class ItemShoppingListSchema(BaseModel):
 class ShoppingListSchema(BaseModel):
     items: Optional[List[ItemShoppingListSchema]]
     total: Optional[int]
+    order: Optional[str]
 
 
 class EditItemShoppingListSchema(ItemShoppingListSchema):

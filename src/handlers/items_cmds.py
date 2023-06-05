@@ -36,7 +36,7 @@ async def item_names(
                 item_index=i[1], category=category_id)
         )
     builder.button(
-        text="« Назад в категории", callback_data="items"
+        text="« На главную страницу", callback_data="home"
     )
     builder.adjust(1)
     await callback.message.edit_text(
@@ -88,12 +88,12 @@ async def item_storages(
                 )
             )
     builder.button(
-        text="« Назад к товару", callback_data=CategoryCallbackFactory(
+        text="« Назад", callback_data=CategoryCallbackFactory(
             id=callback_data.category
         )
     )
     builder.button(
-        text="« Назад в категории", callback_data="items"
+        text="« На главную страницу", callback_data="home"
     )
     builder.adjust(1)
     if storage:
@@ -132,12 +132,12 @@ async def add_to_shopping_list(
             )
         )
     builder.button(
-        text="« Назад к выбору памяти", callback_data=ItemIndexCategoryCallbackFactory(
+        text="« Назад ", callback_data=ItemIndexCategoryCallbackFactory(
             item_index=item_index, category=category_id
         )
     )
     builder.button(
-        text="« Назад в категории", callback_data="items"
+        text="« На главную страницу", callback_data="home"
     )
     builder.adjust(1)
     if storage:
@@ -201,12 +201,12 @@ async def add_to_shopping_list(
         )
     else:
         builder.button(
-            text="« Назад к выбору цвета", callback_data=ItemIndexStorageCallbackFactory(
+            text="« Назад", callback_data=ItemIndexStorageCallbackFactory(
                 item_index=item_index, storage=storage
             )
         )
     builder.button(
-        text="« Назад в категории", callback_data="items"
+        text="« На главную страницу", callback_data="home"
     )
     builder.adjust(1)
     return await callback.message.edit_text(

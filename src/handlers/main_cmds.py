@@ -1,10 +1,6 @@
-from aiogram import F
 from aiogram.filters import Command, Text
-from aiogram.types import (CallbackQuery, InlineKeyboardButton, LabeledPrice,
-                           Message, PreCheckoutQuery, ShippingOption,
-                           ShippingQuery)
+from aiogram.types import CallbackQuery, LabeledPrice, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from bot import bot
 from config import TelegramSettings
 from dependency_injector.wiring import Provide, inject
 from use_cases import SqlaCategoriesRepository, SqlaUsersRepository
@@ -12,23 +8,6 @@ from use_cases.container import SqlaRepositoriesContainer
 
 from . import router
 from .callback_factories import CategoryCallbackFactory
-
-PRICES = [LabeledPrice(label='Ноутбук', amount=10000)]
-
-def main_keyboard():
-    """
-    Клавиатура главного меню
-    """
-    builder = InlineKeyboardBuilder()
-    builder.button(
-        text="🛒 К покупкам",
-        callback_data="items"
-    )
-    builder.button(
-        text="🧺 Корзина",
-        callback_data="shopping_list"
-    )
-    return builder.as_markup()
 
 
 @router.message(Command("start"))
@@ -44,23 +23,7 @@ async def cmd_start(message: Message, use_case: SqlaUsersRepository = Provide[Sq
         await message.answer("Привет!")
 
 
-@router.message(Command("main"))
-async def cmd_main(message: Message):
-    """
-    Главное меню
-    """
-    await message.answer(
-        "🏠 Главное меню",
-        reply_markup=main_keyboard()
-    )
-
-
-@router.callback_query(Text("items"))
-@inject
-async def items(callback: CallbackQuery, use_case: SqlaCategoriesRepository = Provide[SqlaRepositoriesContainer.category_repository]):
-    """
-    Категории
-    """
+async def homepage(use_case: SqlaCategoriesRepository = Provide[SqlaRepositoriesContainer.category_repository]):
     categories = await use_case.get_all()
     builder = InlineKeyboardBuilder()
     for i in categories:
@@ -68,36 +31,33 @@ async def items(callback: CallbackQuery, use_case: SqlaCategoriesRepository = Pr
             text=i.name, callback_data=CategoryCallbackFactory(id=i.id, name=i.name)
         )
     builder.button(
-        text="« Назад в главное меню", callback_data="back_to_main"
+        text="🧺 Корзина",
+        callback_data="shopping_list"
     )
     builder.adjust(1)
-    await callback.message.edit_text(
-        "Категории",
+    return builder
+
+
+@router.message(Command("main"))
+@inject
+async def main(message: Message, ):
+    """
+    Главная страница
+    """
+    builder = await homepage()
+    await message.answer(
+        "Apple store",
         reply_markup=builder.as_markup()
     )
 
 
-@router.callback_query(Text("back_to_main"))
+@router.callback_query(Text("home"))
 async def back_to_main(callback: CallbackQuery):
     """
-    Кнопка "Назад в главное меню из Категорий"
+    Кнопка "На главную страницу"
     """
+    builder = await homepage()
     await callback.message.edit_text(
-        "🏠 Главное меню",
-        reply_markup=main_keyboard()
-    )
-
-
-@router.message(Command("pay"))
-async def cmd_buy(message: Message):
-    await message.answer_invoice(
-        title='title',
-        description='description',
-        provider_token=TelegramSettings().pay_token,
-        currency='RUB',
-        need_email=True,
-        need_shipping_address=True,
-        is_flexible=True,
-        prices=PRICES,
-        payload='some_invoice'
+        "Apple store",
+        reply_markup=builder.as_markup()
     )

@@ -1,7 +1,7 @@
-from aiogram.filters import Text
 from aiogram import F
+from aiogram.filters import Text
 from aiogram.types import CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dependency_injector.wiring import Provide, inject
 from use_cases import SqlaShoppingListRepository
 from use_cases.container import SqlaRepositoriesContainer
@@ -9,6 +9,64 @@ from utils import price_converter
 
 from . import router
 from .callback_factories import EditShoppingListCallbackFactory
+
+
+async def empty_shopping_list(callback: CallbackQuery, builder: InlineKeyboardBuilder):
+    builder.button(text="« На главную страницу", callback_data="home")
+    builder.adjust(1)
+    return await callback.message.edit_text("Корзина пуста", reply_markup=builder.as_markup())
+
+
+async def rednder_item_page(
+    callback_data: EditShoppingListCallbackFactory,
+    use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
+    ):
+    """
+    Отрисовка страницы товара в разделе редактирования корзины
+    """
+    num = callback_data.num
+    order = callback_data.order
+
+    item = await use_case.get_item_from_shopping_list(callback_data.order, num)
+
+    text = item.name
+    text = f"{text} / {item.storage} Гб" if item.storage else text
+    text = f"{text} / {item.color}" if item.color else text
+    price = await price_converter(item.price)
+    subtotal = await price_converter(item.subtotal)
+    total = f"\n🧾 <b><i>{item.quantity} * {price} = {subtotal} руб.</i></b>"
+    text += total
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Удалить", callback_data=EditShoppingListCallbackFactory(
+        id=item.id, action='del', num=num, order=order))
+
+    if item.quantity == 1:
+        builder.button(text="➖", callback_data=EditShoppingListCallbackFactory(
+            id=item.id, action='del', num=num, order=order))
+    else:
+        builder.button(text="➖", callback_data=EditShoppingListCallbackFactory(
+            id=item.id, action='decr', num=num, order=order))
+
+    if item.quantity < item.total:
+        builder.button(text="➕", callback_data=EditShoppingListCallbackFactory(
+            id=item.id, action='incr', num=num, order=order))
+
+    if item.len_shopping_list > 1:
+        if num == item.len_shopping_list:
+            builder.button(text="Следующий товар »", callback_data=EditShoppingListCallbackFactory(
+                num=1, order=order))
+        else:
+            builder.button(text="Следующий товар »", callback_data=EditShoppingListCallbackFactory(
+                num=num+1, order=order))
+    builder.button(text="« Назад в корзину", callback_data="shopping_list")
+    builder.button(text="« На главную страницу", callback_data="home")
+
+    if item.quantity < item.total:
+        builder.adjust(3, 1)
+    else:
+        builder.adjust(2, 1)
+    return text, builder
 
 
 @router.callback_query(Text("shopping_list"))
@@ -26,10 +84,7 @@ async def shopping_list(
     builder = InlineKeyboardBuilder()
 
     if not shopping_list.items:
-        builder.button(text="« Назад в главное меню", callback_data="back_to_main")
-        builder.button(text="🏪 К покупкам", callback_data="items")
-        builder.adjust(1)
-        return await callback.message.edit_text("Корзина пуста", reply_markup=builder.as_markup())
+        return await empty_shopping_list(callback, builder)
 
     msg = []
     for idx, i in enumerate(shopping_list.items, 1):
@@ -46,60 +101,51 @@ async def shopping_list(
     msg.append(f"<b>Итого:</b> <b><i>{total} руб.</i></b>")
     msg = "\n\n".join(msg)
     builder.button(
-        text="📝 Редактировать", callback_data=EditShoppingListCallbackFactory(num=1)
+        text="📝 Редактировать", callback_data=EditShoppingListCallbackFactory(
+            action=None, num=1, order=shopping_list.order)
     )
     builder.button(
-        text="« Назад в главное меню", callback_data="back_to_main"
+        text="💳 К оплате", callback_data="pay"
+    )
+    builder.button(
+        text="« На главную страницу", callback_data="home"
     )
     builder.adjust(1)
     await callback.message.edit_text(msg, reply_markup=builder.as_markup())
 
 
-@router.callback_query(EditShoppingListCallbackFactory.filter(F.num))
+@router.callback_query(EditShoppingListCallbackFactory.filter(F.action == None))
 @inject
 async def edit_shopping_list(
     callback: CallbackQuery,
     callback_data: EditShoppingListCallbackFactory,
-    use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
     ):
     """
     Редактирование корзины
     """
-    user_id = callback.from_user.id
-    num = callback_data.num
-    order = await use_case.get_unpaid_order(user_id)
-    item = await use_case.get_item_from_shopping_list(order.order, num)
-
-    text = item.name
-    text = f"{text} / {item.storage} Гб" if item.storage else text
-    text = f"{text} / {item.color}" if item.color else text
-    price = await price_converter(item.price)
-    subtotal = await price_converter(item.subtotal)
-    total = f"\n🧾 <b><i>{item.quantity} * {price} = {subtotal} руб.</i></b>"
-    text += total
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text="❌ Удалить", callback_data=EditShoppingListCallbackFactory(id=item.id, all=True))
-    builder.button(text="➖", callback_data=EditShoppingListCallbackFactory(id=item.id, decrease=True))
-    if item.quantity < item.total:
-        builder.button(text="➕", callback_data=EditShoppingListCallbackFactory(id=item.id, increase=True))
-    if item.len_shopping_list > 1:
-        builder.button(text="Следующий товар »", callback_data="shopping_list")
-    builder.button(text="« Назад в корзину", callback_data="shopping_list")
-    builder.button(text="« Назад в главное меню", callback_data="back_to_main")
-
-    if item.quantity < item.total:
-        builder.adjust(3, 1)
-    else:
-        builder.adjust(2, 1)
+    text, builder = await rednder_item_page(callback_data)
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 
-@router.callback_query(EditShoppingListCallbackFactory.filter(F.id))
+@router.callback_query(EditShoppingListCallbackFactory.filter(F.action != None))
 @inject
-async def edit_shopping_list(
+async def edit_item_shopping_list(
     callback: CallbackQuery,
     callback_data: EditShoppingListCallbackFactory,
     use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
     ):
-    user_id = callback.from_user.id
+    if callback_data.action == 'incr':
+        await use_case.increase_quantity_by_item_id(callback_data.id)
+    elif callback_data.action == 'decr':
+        await use_case.decrease_quantity_by_item_id(callback_data.id)
+    elif callback_data.action == 'del':
+        await use_case.del_item(callback_data.id)
+
+        shopping_list = await use_case.get_shopping_list(callback.from_user.id)
+        builder = InlineKeyboardBuilder()
+
+        if not shopping_list.items:
+            return await empty_shopping_list(callback, builder)
+
+    text, builder = await rednder_item_page(callback_data)
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
