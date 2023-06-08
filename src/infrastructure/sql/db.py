@@ -9,11 +9,14 @@ from sqlalchemy.ext.declarative import declarative_base
 logger = logging.getLogger(__name__)
 Base = declarative_base()
 
+
 class Database:
     def __init__(self, url: str, debug: bool) -> None:
         self._engine = async_sa.create_async_engine(url, echo=debug)
         self._session_factory = async_sa.async_scoped_session(
-            async_sa.async_sessionmaker(self._engine, class_=async_sa.AsyncSession, expire_on_commit=False),
+            async_sa.async_sessionmaker(
+                self._engine, class_=async_sa.AsyncSession, expire_on_commit=False
+            ),
             current_task,
         )
 

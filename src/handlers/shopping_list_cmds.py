@@ -15,13 +15,17 @@ from .callback_factories import EditShoppingListCallbackFactory
 async def empty_shopping_list(callback: CallbackQuery, builder: InlineKeyboardBuilder):
     builder.button(text="« На главную страницу", callback_data="home")
     builder.adjust(1)
-    return await callback.message.edit_text("Корзина пуста", reply_markup=builder.as_markup())
+    return await callback.message.edit_text(
+        "Корзина пуста", reply_markup=builder.as_markup()
+    )
 
 
 async def rednder_item_page(
     callback_data: EditShoppingListCallbackFactory,
-    use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
-    ):
+    use_case: SqlaShoppingListRepository = Provide[
+        SqlaRepositoriesContainer.shopping_list_repository
+    ],
+):
     """
     Отрисовка страницы товара в разделе редактирования корзины
     """
@@ -39,27 +43,47 @@ async def rednder_item_page(
     text += total
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="❌ Удалить", callback_data=EditShoppingListCallbackFactory(
-        id=item.id, action='del', num=num, order=order))
+    builder.button(
+        text="❌ Удалить",
+        callback_data=EditShoppingListCallbackFactory(
+            id=item.id, action="del", num=num, order=order
+        ),
+    )
 
     if item.quantity == 1:
-        builder.button(text="➖", callback_data=EditShoppingListCallbackFactory(
-            id=item.id, action='del', num=num, order=order))
+        builder.button(
+            text="➖",
+            callback_data=EditShoppingListCallbackFactory(
+                id=item.id, action="del", num=num, order=order
+            ),
+        )
     else:
-        builder.button(text="➖", callback_data=EditShoppingListCallbackFactory(
-            id=item.id, action='decr', num=num, order=order))
+        builder.button(
+            text="➖",
+            callback_data=EditShoppingListCallbackFactory(
+                id=item.id, action="decr", num=num, order=order
+            ),
+        )
 
     if item.quantity < item.total:
-        builder.button(text="➕", callback_data=EditShoppingListCallbackFactory(
-            id=item.id, action='incr', num=num, order=order))
+        builder.button(
+            text="➕",
+            callback_data=EditShoppingListCallbackFactory(
+                id=item.id, action="incr", num=num, order=order
+            ),
+        )
 
     if item.len_shopping_list > 1:
         if num == item.len_shopping_list:
-            builder.button(text="Следующий товар »", callback_data=EditShoppingListCallbackFactory(
-                num=1, order=order))
+            builder.button(
+                text="Следующий товар »",
+                callback_data=EditShoppingListCallbackFactory(num=1, order=order),
+            )
         else:
-            builder.button(text="Следующий товар »", callback_data=EditShoppingListCallbackFactory(
-                num=num+1, order=order))
+            builder.button(
+                text="Следующий товар »",
+                callback_data=EditShoppingListCallbackFactory(num=num + 1, order=order),
+            )
     builder.button(text="« Назад в корзину", callback_data="shopping_list")
     builder.button(text="« На главную страницу", callback_data="home")
 
@@ -92,8 +116,10 @@ async def make_shopping_list(shopping_list: ShoppingListSchema) -> str:
 @inject
 async def shopping_list(
     callback: CallbackQuery,
-    use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
-    ):
+    use_case: SqlaShoppingListRepository = Provide[
+        SqlaRepositoriesContainer.shopping_list_repository
+    ],
+):
     """
     Корзина
     """
@@ -108,19 +134,19 @@ async def shopping_list(
     msg = await make_shopping_list(shopping_list)
 
     builder.button(
-        text="📝 Редактировать", callback_data=EditShoppingListCallbackFactory(
-            action=None, num=1, order=shopping_list.order)
+        text="📝 Редактировать",
+        callback_data=EditShoppingListCallbackFactory(
+            action=None, num=1, order=shopping_list.order
+        ),
     )
     builder.button(
-        text="❌ Очистить корзину", callback_data=EditShoppingListCallbackFactory(
-            action='clear', order=shopping_list.order)
+        text="❌ Очистить корзину",
+        callback_data=EditShoppingListCallbackFactory(
+            action="clear", order=shopping_list.order
+        ),
     )
-    builder.button(
-        text="💳 К оплате", callback_data="pay"
-    )
-    builder.button(
-        text="« На главную страницу", callback_data="home"
-    )
+    builder.button(text="💳 К оплате", callback_data="pay")
+    builder.button(text="« На главную страницу", callback_data="home")
     builder.adjust(1)
     await callback.message.edit_text(msg, reply_markup=builder.as_markup())
 
@@ -130,7 +156,7 @@ async def shopping_list(
 async def edit_shopping_list(
     callback: CallbackQuery,
     callback_data: EditShoppingListCallbackFactory,
-    ):
+):
     """
     Редактирование корзины
     """
@@ -158,15 +184,17 @@ async def edit_shopping_list(
 async def edit_item_shopping_list(
     callback: CallbackQuery,
     callback_data: EditShoppingListCallbackFactory,
-    use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
-    ):
-    if callback_data.action == 'incr':
+    use_case: SqlaShoppingListRepository = Provide[
+        SqlaRepositoriesContainer.shopping_list_repository
+    ],
+):
+    if callback_data.action == "incr":
         await use_case.increase_quantity_by_item_id(callback_data.id)
-    elif callback_data.action == 'decr':
+    elif callback_data.action == "decr":
         await use_case.decrease_quantity_by_item_id(callback_data.id)
-    elif callback_data.action == 'del':
+    elif callback_data.action == "del":
         await use_case.del_item(callback_data.id)
-    elif callback_data.action == 'clear':
+    elif callback_data.action == "clear":
         await use_case.clear_shopping_list(callback_data.order)
 
         shopping_list = await use_case.get_shopping_list(callback.from_user.id)

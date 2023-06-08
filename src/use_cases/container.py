@@ -10,17 +10,22 @@ from infrastructure.sql.container import SqlAlchemyContainer
 
 class SqlaRepositoriesContainer(DeclarativeContainer):
     users_repository = Factory(
-        SqlaUsersRepository, session_factory=SqlAlchemyContainer.session_factory.provided
+        SqlaUsersRepository,
+        session_factory=SqlAlchemyContainer.session_factory.provided,
     )
     category_repository = Factory(
-        SqlaCategoriesRepository, session_factory=SqlAlchemyContainer.session_factory.provided
+        SqlaCategoriesRepository,
+        session_factory=SqlAlchemyContainer.session_factory.provided,
     )
     items_repository = Factory(
-        SqlaItemsRepository, session_factory=SqlAlchemyContainer.session_factory.provided
+        SqlaItemsRepository,
+        session_factory=SqlAlchemyContainer.session_factory.provided,
     )
     shopping_list_repository = Factory(
-        SqlaShoppingListRepository, session_factory=SqlAlchemyContainer.session_factory.provided
+        SqlaShoppingListRepository,
+        session_factory=SqlAlchemyContainer.session_factory.provided,
     )
     orders_repository = Factory(
-        SqlaOrdersRepository, session_factory=SqlAlchemyContainer.session_factory.provided
+        SqlaOrdersRepository,
+        session_factory=SqlAlchemyContainer.session_factory.provided,
     )

@@ -1,6 +1,5 @@
 from infrastructure.sql.db import Base
-from sqlalchemy import (VARCHAR, BigInteger, Column, DateTime, ForeignKey,
-                        Integer)
+from sqlalchemy import VARCHAR, BigInteger, Column, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -14,7 +13,9 @@ class Item(Base):
     color = Column(VARCHAR(90), nullable=True)
     color_index = Column(Integer, nullable=True)
     item_index = Column(Integer, nullable=True)
-    category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+    category_id = Column(
+        Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
+    )
     price = Column(Integer, nullable=False, default=0)
     total = Column(Integer, nullable=False, default=0)
 

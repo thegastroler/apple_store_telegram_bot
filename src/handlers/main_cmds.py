@@ -12,7 +12,10 @@ from .callback_factories import CategoryCallbackFactory
 
 @router.message(Command("start"))
 @inject
-async def cmd_start(message: Message, use_case: SqlaUsersRepository = Provide[SqlaRepositoriesContainer.users_repository]):
+async def cmd_start(
+    message: Message,
+    use_case: SqlaUsersRepository = Provide[SqlaRepositoriesContainer.users_repository],
+):
     """
     Приветствие
     """
@@ -23,17 +26,18 @@ async def cmd_start(message: Message, use_case: SqlaUsersRepository = Provide[Sq
         await message.answer("Привет!")
 
 
-async def homepage(use_case: SqlaCategoriesRepository = Provide[SqlaRepositoriesContainer.category_repository]):
+async def homepage(
+    use_case: SqlaCategoriesRepository = Provide[
+        SqlaRepositoriesContainer.category_repository
+    ],
+):
     categories = await use_case.get_all()
     builder = InlineKeyboardBuilder()
     for i in categories:
         builder.button(
             text=i.name, callback_data=CategoryCallbackFactory(id=i.id, name=i.name)
         )
-    builder.button(
-        text="🧺 Корзина",
-        callback_data="shopping_list"
-    )
+    builder.button(text="🧺 Корзина", callback_data="shopping_list")
     builder.adjust(1)
     return builder
 
@@ -45,10 +49,7 @@ async def main(message: Message):
     Главная страница
     """
     builder = await homepage()
-    await message.answer(
-        "Apple store",
-        reply_markup=builder.as_markup()
-    )
+    await message.answer("Apple store", reply_markup=builder.as_markup())
 
 
 @router.callback_query(Text("home"))
@@ -57,7 +58,4 @@ async def back_to_main(callback: CallbackQuery):
     Кнопка "На главную страницу"
     """
     builder = await homepage()
-    await callback.message.edit_text(
-        "Apple store",
-        reply_markup=builder.as_markup()
-    )
+    await callback.message.edit_text("Apple store", reply_markup=builder.as_markup())

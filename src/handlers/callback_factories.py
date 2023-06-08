@@ -27,5 +27,5 @@ class ItemIdCallbackFactory(CallbackData, prefix="item_id"):
 class EditShoppingListCallbackFactory(CallbackData, prefix="edit_sl"):
     id: Optional[int]
     order: str
-    action: Optional[Literal['decr', 'incr', 'del', 'clear']]
+    action: Optional[Literal["decr", "incr", "del", "clear"]]
     num: Optional[int]

@@ -1,7 +1,13 @@
 from aiogram import F
 from aiogram.filters import Command, Text
-from aiogram.types import (CallbackQuery, LabeledPrice, Message,
-                           PreCheckoutQuery, ShippingOption, ShippingQuery)
+from aiogram.types import (
+    CallbackQuery,
+    LabeledPrice,
+    Message,
+    PreCheckoutQuery,
+    ShippingOption,
+    ShippingQuery,
+)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot import bot
 from config import TelegramSettings
@@ -16,27 +22,25 @@ from . import router
 from .callback_factories import CategoryCallbackFactory
 
 STANDART_SHIPPING = ShippingOption(
-    id='standart',
-    title='Стандартная доставка',
-    prices=[LabeledPrice(
-        label='Стандартная доставка',
-        amount=50000)
-    ])
+    id="standart",
+    title="Стандартная доставка",
+    prices=[LabeledPrice(label="Стандартная доставка", amount=50000)],
+)
 FAST_SHIPPING = ShippingOption(
-    id='fast',
-    title='Быстрая доставка',
-    prices=[LabeledPrice(
-        label='Быстрая доставка',
-        amount=200000)
-    ])
+    id="fast",
+    title="Быстрая доставка",
+    prices=[LabeledPrice(label="Быстрая доставка", amount=200000)],
+)
 
 
 @router.callback_query(Text("pay"))
 @inject
 async def pay(
     callback: CallbackQuery,
-    use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
-    ):
+    use_case: SqlaShoppingListRepository = Provide[
+        SqlaRepositoriesContainer.shopping_list_repository
+    ],
+):
     """
     Оплата корзины
     """
@@ -47,7 +51,7 @@ async def pay(
         return
 
     prices = [
-        LabeledPrice(label=i.name, amount=i.price*100) for i in shopping_list.items
+        LabeledPrice(label=i.name, amount=i.price * 100) for i in shopping_list.items
     ]
     await callback.message.answer_invoice(
         title="Оплата заказа",
@@ -71,16 +75,16 @@ async def shipping_process(shipping: ShippingQuery):
     """
     Подтверждение доставки
     """
-    if shipping.shipping_address.country_code != 'RU':
+    if shipping.shipping_address.country_code != "RU":
         await bot.answer_shipping_query(
             shipping.id,
             ok=False,
-            error_message='Извините, доставка возможна только в пределах РФ.')
+            error_message="Извините, доставка возможна только в пределах РФ.",
+        )
     else:
         await bot.answer_shipping_query(
-            shipping.id,
-            ok=True,
-            shipping_options=[STANDART_SHIPPING, FAST_SHIPPING])
+            shipping.id, ok=True, shipping_options=[STANDART_SHIPPING, FAST_SHIPPING]
+        )
 
 
 @router.pre_checkout_query(lambda query: True)
@@ -88,8 +92,9 @@ async def shipping_process(shipping: ShippingQuery):
 async def pre_checkout_process(
     pre_checkout: PreCheckoutQuery,
     use_case: SqlaOrdersRepository = Provide[
-        SqlaRepositoriesContainer.orders_repository]
-    ):
+        SqlaRepositoriesContainer.orders_repository
+    ],
+):
     """
     Подтверждение перед оплатой
     """
@@ -97,17 +102,19 @@ async def pre_checkout_process(
     paid = await use_case.is_paid_order(order)
     if paid:
         return await bot.answer_pre_checkout_query(
-            pre_checkout.id,ok=False, error_message="Ваш заказ уже оплачен!")
+            pre_checkout.id, ok=False, error_message="Ваш заказ уже оплачен!"
+        )
     await bot.answer_pre_checkout_query(pre_checkout.id, ok=True)
 
 
-@router.message(F.content_type.in_({'successful_payment'}))
+@router.message(F.content_type.in_({"successful_payment"}))
 @inject
 async def successful_payment(
     message: Message,
     use_case: SqlaOrdersRepository = Provide[
-        SqlaRepositoriesContainer.orders_repository]
-    ):
+        SqlaRepositoriesContainer.orders_repository
+    ],
+):
     """
     Оплата прошла успешно
     """
@@ -131,4 +138,4 @@ async def successful_payment(
         "post_code": post_code,
     }
     await use_case.update_info_on_paid(order, data)
-    await message.answer('Платеж прошел успешно!')
+    await message.answer("Платеж прошел успешно!")
