@@ -3,6 +3,7 @@ from aiogram.filters import Text
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dependency_injector.wiring import Provide, inject
+from schemas import ShoppingListSchema
 from use_cases import SqlaShoppingListRepository
 from use_cases.container import SqlaRepositoriesContainer
 from utils import price_converter
@@ -69,6 +70,24 @@ async def rednder_item_page(
     return text, builder
 
 
+async def make_shopping_list(shopping_list: ShoppingListSchema) -> str:
+    msg = []
+    for idx, i in enumerate(shopping_list.items, 1):
+        text = f"{idx}. {i.name}"
+        text = f"{text} / {i.storage} Гб" if i.storage else text
+        text = f"{text} / {i.color}" if i.color else text
+        price = await price_converter(i.price)
+        subtotal = await price_converter(i.subtotal)
+        total = f"\n🧾 <b><i>{i.quantity} * {price} = {subtotal} руб.</i></b>"
+        text += total
+        msg.append(text)
+
+    total = await price_converter(shopping_list.total)
+    msg.append(f"<b>Итого:</b> <b><i>{total} руб.</i></b>")
+    msg = "\n\n".join(msg)
+    return msg
+
+
 @router.callback_query(Text("shopping_list"))
 @inject
 async def shopping_list(
@@ -86,23 +105,15 @@ async def shopping_list(
     if not shopping_list.items:
         return await empty_shopping_list(callback, builder)
 
-    msg = []
-    for idx, i in enumerate(shopping_list.items, 1):
-        text = f"{idx}. {i.name}"
-        text = f"{text} / {i.storage} Гб" if i.storage else text
-        text = f"{text} / {i.color}" if i.color else text
-        price = await price_converter(i.price)
-        subtotal = await price_converter(i.subtotal)
-        total = f"\n🧾 <b><i>{i.quantity} * {price} = {subtotal} руб.</i></b>"
-        text += total
-        msg.append(text)
+    msg = await make_shopping_list(shopping_list)
 
-    total = await price_converter(shopping_list.total)
-    msg.append(f"<b>Итого:</b> <b><i>{total} руб.</i></b>")
-    msg = "\n\n".join(msg)
     builder.button(
         text="📝 Редактировать", callback_data=EditShoppingListCallbackFactory(
             action=None, num=1, order=shopping_list.order)
+    )
+    builder.button(
+        text="❌ Очистить корзину", callback_data=EditShoppingListCallbackFactory(
+            action='clear', order=shopping_list.order)
     )
     builder.button(
         text="💳 К оплате", callback_data="pay"
@@ -127,6 +138,21 @@ async def edit_shopping_list(
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 
+# @router.callback_query(EditShoppingListCallbackFactory.filter(F.action == 'clear'))
+# @inject
+# async def clear_shopping_list(
+#     callback: CallbackQuery,
+#     callback_data: EditShoppingListCallbackFactory,
+#     use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
+#     ):
+#     """
+#     Очистка корзины
+#     """
+#     text, builder = await rednder_item_page(callback_data)
+#     builder = InlineKeyboardBuilder()
+#     await empty_shopping_list(callback, builder)
+
+
 @router.callback_query(EditShoppingListCallbackFactory.filter(F.action != None))
 @inject
 async def edit_item_shopping_list(
@@ -140,6 +166,8 @@ async def edit_item_shopping_list(
         await use_case.decrease_quantity_by_item_id(callback_data.id)
     elif callback_data.action == 'del':
         await use_case.del_item(callback_data.id)
+    elif callback_data.action == 'clear':
+        await use_case.clear_shopping_list(callback_data.order)
 
         shopping_list = await use_case.get_shopping_list(callback.from_user.id)
         builder = InlineKeyboardBuilder()

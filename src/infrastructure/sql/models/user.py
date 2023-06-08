@@ -1,8 +1,6 @@
-from datetime import datetime
-
 from infrastructure.sql.db import Base
 from sqlalchemy import VARCHAR, BigInteger, Boolean, Column, DateTime
-from sqlalchemy.sql import expression
+from sqlalchemy.sql import expression, func
 
 
 class User(Base):
@@ -12,8 +10,9 @@ class User(Base):
     username = Column(VARCHAR(90), nullable=False)
     banned = Column(Boolean, default=False, nullable=True)
     is_admin = Column(Boolean, default=expression.false(), nullable=False)
-    created_at = Column(DateTime, default=datetime.now(), nullable=False)
-    updated_at = Column(DateTime, onupdate=datetime.now(), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     class Config:
         orm_mode = True

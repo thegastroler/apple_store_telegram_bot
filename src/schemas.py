@@ -35,7 +35,7 @@ class ItemSchema(BaseModel):
 
 
 class OrderIdSchema(BaseModel):
-    order: str
+    order: Optional[str]
 
 
 class IdQuantitySchema(BaseModel):

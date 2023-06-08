@@ -2,6 +2,7 @@ from .users import SqlaUsersRepository
 from .categories import SqlaCategoriesRepository
 from .items import SqlaItemsRepository
 from .shopping_list import SqlaShoppingListRepository
+from .orders import SqlaOrdersRepository
 from dependency_injector.containers import DeclarativeContainer
 from dependency_injector.providers import Factory
 from infrastructure.sql.container import SqlAlchemyContainer
@@ -19,4 +20,7 @@ class SqlaRepositoriesContainer(DeclarativeContainer):
     )
     shopping_list_repository = Factory(
         SqlaShoppingListRepository, session_factory=SqlAlchemyContainer.session_factory.provided
+    )
+    orders_repository = Factory(
+        SqlaOrdersRepository, session_factory=SqlAlchemyContainer.session_factory.provided
     )

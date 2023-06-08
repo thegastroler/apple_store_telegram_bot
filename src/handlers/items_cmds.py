@@ -2,7 +2,7 @@ from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dependency_injector.wiring import Provide, inject
 from use_cases import (SqlaCategoriesRepository, SqlaItemsRepository,
-                       SqlaShoppingListRepository)
+                       SqlaShoppingListRepository, SqlaOrdersRepository)
 from use_cases.container import SqlaRepositoriesContainer
 from utils import make_order, price_converter
 
@@ -156,34 +156,39 @@ async def add_to_shopping_list(
 async def add_to_shopping_list(
     callback: CallbackQuery,
     callback_data: ItemIdCallbackFactory,
-    use_case: SqlaShoppingListRepository = Provide[
+    sl_use_case: SqlaShoppingListRepository = Provide[
         SqlaRepositoriesContainer.shopping_list_repository
-    ]):
+    ],
+    order_use_case: SqlaOrdersRepository = Provide[
+        SqlaRepositoriesContainer.orders_repository
+    ],
+    ):
     """
     Добавление товара в корзину
     """
     user_id = callback.from_user.id
     item_id = callback_data.id
-    unpaid_order = await use_case.get_unpaid_order(user_id)
+    unpaid_order = await order_use_case.get_unpaid_order(user_id)
 
-    if unpaid_order:
+    if unpaid_order.order:
         order = unpaid_order.order
-        id_quantity = await use_case.get_id_quantity(order, item_id)
+        id_quantity = await sl_use_case.get_id_quantity(order, item_id)
         if id_quantity:
-            item_total = await use_case.get_item_quantity(order, item_id)
+            item_total = await sl_use_case.get_item_quantity(order, item_id)
             if item_total.total > id_quantity.quantity:
-                await use_case.increase_quantity(order, item_id)
+                await sl_use_case.increase_quantity(order, item_id)
             else:
-                ... # TODO
+                return await callback.message.answer()
         else:
-            await use_case.insert_row(user_id, item_id, order)
+            await sl_use_case.insert_row(user_id, item_id, order)
     else:
-        last_order = await use_case.get_last_paid_order(user_id)
-        if last_order:
+        last_order = await order_use_case.get_last_paid_order(user_id)
+        if last_order.order:
             order = await make_order(order=last_order.order)
         else:
             order = await make_order(user_id=user_id)
-        await use_case.insert_row(user_id, item_id, order)
+        await order_use_case.insert_row(user_id, order)
+        await sl_use_case.insert_row(user_id, item_id, order)
 
     item_index = callback_data.item_index
     storage = callback_data.storage

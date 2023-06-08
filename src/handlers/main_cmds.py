@@ -40,7 +40,7 @@ async def homepage(use_case: SqlaCategoriesRepository = Provide[SqlaRepositories
 
 @router.message(Command("main"))
 @inject
-async def main(message: Message, ):
+async def main(message: Message):
     """
     Главная страница
     """

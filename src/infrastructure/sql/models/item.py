@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from infrastructure.sql.db import Base
 from sqlalchemy import (VARCHAR, BigInteger, Column, DateTime, ForeignKey,
                         Integer)
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 
 class Item(Base):
@@ -15,13 +14,12 @@ class Item(Base):
     color = Column(VARCHAR(90), nullable=True)
     color_index = Column(Integer, nullable=True)
     item_index = Column(Integer, nullable=True)
-
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
-
     price = Column(Integer, nullable=False, default=0)
     total = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime, default=datetime.now(), nullable=False)
-    updated_at = Column(DateTime, onupdate=datetime.now(), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     category = relationship("Category", backref="category_id")
 

@@ -17,61 +17,63 @@ class SqlaShoppingListRepository():
     def __init__(self, session_factory: Callable[..., AbstractAsyncContextManager[AsyncSession]]):
         self.session_factory = session_factory
 
-    async def add(self, user_id: int, item_id: int) -> None:
-        unpaid_order = await self.get_unpaid_order(user_id)
-        if unpaid_order:
-            order = unpaid_order.order
-            id_quantity = await self.get_id_quantity(order, item_id)
-            if id_quantity:
-                item_total = await self.get_item_quantity(order, item_id)
-                if item_total.total > id_quantity.quantity:
-                    return await self.increase_quantity(order, item_id)
-            else:
-                return await self.insert_row(user_id, item_id, order)
-        else:
-            last_order = await self.get_last_paid_order(user_id)
-            if last_order:
-                order = await make_order(order=last_order.order)
-            else:
-                order = await make_order(user_id=user_id)
-            await self.insert_row(user_id, item_id, order)
+    # async def add(self, user_id: int, item_id: int) -> None:
+    #     unpaid_order = await self.get_unpaid_order(user_id)
+    #     if unpaid_order.order:
+    #         order = unpaid_order.order
+    #         id_quantity = await self.get_id_quantity(order, item_id)
+    #         if id_quantity:
+    #             item_total = await self.get_item_quantity(order, item_id)
+    #             if item_total.total > id_quantity.quantity:
+    #                 return await self.increase_quantity(order, item_id)
+    #         else:
+    #             return await self.insert_row(user_id, item_id, order)
+    #     else:
+    #         last_order = await self.get_last_paid_order(user_id)
+    #         if last_order:
+    #             order = await make_order(order=last_order.order)
+    #         else:
+    #             order = await make_order(user_id=user_id)
+    #         await self.insert_row(user_id, item_id, order)
 
-    async def insert_row(self, user_id: int, item_id: int, order: str):
+    async def insert_row(self, user_id: int, item_id: int, order_id: str):
         async with self.session_factory() as session:
             query = insert(self.m)\
                 .values({
                     "user_id": user_id,
                     "item_id": item_id,
-                    "order": order,
+                    "order_id": order_id,
                     "quantity": 1
                 })
             await session.execute(query)
             await session.commit()
 
-    async def get_unpaid_order(self, user_id: int) -> Optional[OrderIdSchema]:
-        async with self.session_factory() as session:
-            query = select(self.m.order)\
-                .filter(and_(self.m.paid == False, self.m.user_id == user_id))
-            result = await session.execute(query)
-            result = result.first()
-            order = result[0] if result else None
-            return OrderIdSchema(order=order) if order else None
+    # async def get_unpaid_order(self, user_id: int) -> Optional[OrderIdSchema]:
+    #     # TODO убрать
+    #     async with self.session_factory() as session:
+    #         query = select(self.m.order_id)\
+    #             .filter(and_(self.m.paid == False, self.m.user_id == user_id))
+    #         result = await session.execute(query)
+    #         result = result.first()
+    #         order = result[0] if result else None
+    #         return OrderIdSchema(order=order)
 
-    async def get_last_paid_order(self, user_id: int) -> Optional[OrderIdSchema]:
-        async with self.session_factory() as session:
-            query = select(self.m.order)\
-                .filter(and_(self.m.paid == True, self.m.user_id == user_id))\
-                .order_by(desc(self.m.order))
-            result = await session.execute(query)
-            result = result.first()
-            order = result[0] if result else None
-            return OrderIdSchema(order=order) if order else None
+    # async def get_last_paid_order(self, user_id: int) -> Optional[OrderIdSchema]:
+    #     # TODO убрать
+    #     async with self.session_factory() as session:
+    #         query = select(self.m.order_id)\
+    #             .filter(and_(self.m.paid == True, self.m.user_id == user_id))\
+    #             .order_by(desc(self.m.order_id))
+    #         result = await session.execute(query)
+    #         result = result.first()
+    #         order = result[0] if result else None
+    #         return OrderIdSchema(order=order)
 
     async def increase_quantity(self, order: str, item_id: int) -> List[Tuple[str]]:
         async with self.session_factory() as session:
             query = update(self.m).\
                 where(and_(
-                    self.m.order == order,
+                    self.m.order_id == order,
                     self.m.item_id == item_id)).\
                 values({"quantity": self.m.quantity + 1})
             await session.execute(query)
@@ -114,11 +116,11 @@ class SqlaShoppingListRepository():
                 len_shopping_list=len(result)
             ) for i in result][0] if result else None
 
-    async def get_id_quantity(self, order: str, item_id: int) -> Optional[IdQuantitySchema]:
+    async def get_id_quantity(self, order_id: str, item_id: int) -> Optional[IdQuantitySchema]:
         async with self.session_factory() as session:
             query = select(self.m.id, self.m.quantity).\
                 where(and_(
-                    self.m.order == order,
+                    self.m.order_id == order_id,
                     self.m.item_id == item_id))
             result = await session.execute(query)
             result = result.first()
@@ -128,7 +130,7 @@ class SqlaShoppingListRepository():
         async with self.session_factory() as session:
             query = select(self.m).\
                 where(and_(
-                    self.m.order == order,
+                    self.m.order_id == order,
                     self.m.item_id == item_id)).\
                 options(selectinload(self.m.item))
             result = await session.execute(query)
@@ -136,20 +138,22 @@ class SqlaShoppingListRepository():
             return [ItemTotalSchema(total=i.item.total) for i in result][0]
 
     async def get_shopping_list(self, user_id: int) -> Optional[ShoppingListSchema]:
-        i = models.Item
-        sl = self.m
+        itm = models.Item
+        sl = models.ShoppingList
+        ordr = models.Order
         async with self.session_factory() as session:
             query = select(
-                i.name, i.storage, i.color, sl.quantity, i.price, label("subtotal", sl.quantity * i.price), sl.order
+                itm.name, itm.storage, itm.color, sl.quantity, itm.price, label("subtotal", sl.quantity * itm.price), sl.order_id
                 )\
                 .select_from(sl)\
-                .join(i, i.id == sl.item_id)\
-                .where(and_(sl.user_id == user_id, sl.paid == False))\
+                .join(itm, itm.id == sl.item_id)\
+                .join(ordr, ordr.order == sl.order_id)\
+                .where(and_(ordr.user_id == user_id, ordr.paid == False))\
                 .order_by(sl.created_at)
             result = await session.execute(query)
             result = result.fetchall()
             total = sum([i.subtotal for i in result])
-            order = [i.order for i in result]
+            order = [i.order_id for i in result]
             order = order[0] if order else None
             return ShoppingListSchema(
                 items=[
@@ -174,7 +178,7 @@ class SqlaShoppingListRepository():
                 sl.id, i.name, i.storage, i.color, sl.quantity , i.price, i.total, label("subtotal", sl.quantity * i.price))\
                 .select_from(sl)\
                 .join(i, i.id == sl.item_id)\
-                .where(sl.order == order)\
+                .where(sl.order_id == order)\
                 .order_by(sl.created_at)
             result = await session.execute(query)
             result = result.fetchall()
@@ -197,5 +201,11 @@ class SqlaShoppingListRepository():
     async def del_item(self, sl_id: int) -> None:
         async with self.session_factory() as session:
             query = delete(self.m).filter(self.m.id == sl_id)
+            await session.execute(query)
+            await session.commit()
+
+    async def clear_shopping_list(self, order: str) -> None:
+        async with self.session_factory() as session:
+            query = delete(self.m).filter(self.m.order_id == order)
             await session.execute(query)
             await session.commit()
