@@ -1,30 +1,50 @@
-from aiogram.filters import Command, Text
-from aiogram.types import CallbackQuery, LabeledPrice, Message
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import TelegramSettings
+from aiogram.filters import Command
+from aiogram.types import Message
 from dependency_injector.wiring import Provide, inject
-from use_cases import SqlaCategoriesRepository, SqlaUsersRepository
+from use_cases import SqlaUsersRepository
 from use_cases.container import SqlaRepositoriesContainer
 
 from . import router
-from .callback_factories import CategoryCallbackFactory
 from filters import AdminFilter
 
-@router.message(AdminFilter(), Command("ban_user"))
+
+@router.message(AdminFilter(), Command("ban"))
 @inject
-async def cmd_start(
+async def ban(
     message: Message,
     use_case: SqlaUsersRepository = Provide[SqlaRepositoriesContainer.users_repository],
 ):
     """
     Забанить пользователя
     """
-    user_id = message.text.replace("/ban_user ", "")
-    """добавить отправку id пользователя с пересланного сообщения"""
-    try:
-        user_id = int(user_id)
-    except ValueError:
-        user_id = None
-        return await message.answer("Невалидный id!")
-    await use_case.ban_user(user_id)
-    await message.answer("Пользователь добавлен в бан-лист")
+    username = message.text.split(" ")
+    if len(username) == 2:
+        username = username[-1]
+        returned_username = await use_case.ban_user(username)
+        if returned_username and returned_username == username:
+            await message.answer("Пользователь добавлен в бан-лист")
+        else:
+            await message.answer("Пользователь не найден!")
+    else:
+        return await message.answer("Введите имя пользователя!")
+
+
+@router.message(AdminFilter(), Command("unban"))
+@inject
+async def unban(
+    message: Message,
+    use_case: SqlaUsersRepository = Provide[SqlaRepositoriesContainer.users_repository],
+):
+    """
+    Разбанить пользователя
+    """
+    username = message.text.split(" ")
+    if len(username) == 2:
+        username = username[-1]
+        returned_username = await use_case.unban_user(username)
+        if returned_username and returned_username == username:
+            await message.answer("Пользователь исключен из бан-листа")
+        else:
+            await message.answer("Пользователь не найден!")
+    else:
+        return await message.answer("Введите имя пользователя!")

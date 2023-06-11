@@ -45,22 +45,42 @@ class SqlaUsersRepository:
             result = await session.execute(query)
             return [i[0] for i in result.fetchall()]
 
-    async def ban_user(self, user_id: int) -> None:
+    async def ban_user(self, username: str) -> Optional[str]:
         async with self.session_factory() as session:
             query = (
                 update(self.model)
-                .filter(self.model.user_id == user_id)
+                .filter(self.model.username == username)
                 .values({"banned": True})
+                .returning(self.model.username)
             )
-            await session.execute(query)
+            result = await session.execute(query)
+            result = result.scalar()
             await session.commit()
+            return result
 
-    async def unban_user(self, user_id: int) -> None:
+    async def unban_user(self, username: str) -> Optional[str]:
         async with self.session_factory() as session:
             query = (
                 update(self.model)
-                .filter(self.model.user_id == user_id)
+                .filter(self.model.username == username)
                 .values({"banned": False})
+                .returning(self.model.username)
             )
-            await session.execute(query)
+            result = await session.execute(query)
+            result = result.scalar()
             await session.commit()
+            return result
+
+    async def data_updating(self, user_id: int, username: str) -> None:
+        async with self.session_factory() as session:
+            query = select(self.model.username).filter(self.model.user_id == user_id)
+            result = await session.execute(query)
+            result = result.scalar()
+            if result != username:
+                query = (
+                    update(self.model)
+                    .filter(self.model.user_id == user_id)
+                    .values({"username": username})
+                )
+                await session.execute(query)
+                await session.commit()

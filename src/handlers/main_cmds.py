@@ -1,13 +1,29 @@
 from aiogram.filters import Command, Text
-from aiogram.types import CallbackQuery, LabeledPrice, Message
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import TelegramSettings
 from dependency_injector.wiring import Provide, inject
 from use_cases import SqlaCategoriesRepository, SqlaUsersRepository
 from use_cases.container import SqlaRepositoriesContainer
 
 from . import router
 from .callback_factories import CategoryCallbackFactory
+
+
+async def main_text() -> str:
+    return (
+        "Добро пожаловать в Apple Store Bot!\n\n"
+        "Чтобы воспользоваться ботом, вам доступны следующие команды:\n\n"
+        "/main - домашняя страница\n"
+        "/dice - бросить кость\n"
+    )
+
+
+async def admin_text() -> str:
+    return (
+        "\n<b>Admin</b>\n"
+        "/ban {username} - добавить пользователя в бан-лист\n"
+        "/unban {username} - исключить пользователя из бан-листа"
+    )
 
 
 @router.message(Command("start"))
@@ -20,10 +36,12 @@ async def cmd_start(
     Приветствие
     """
     user = await use_case.create(message.chat.id, message.chat.username)
+    text = await main_text()
     if user and user.is_admin:
-        await message.answer("Привет админ!")
+        admin = await admin_text()
+        await message.answer(text + admin)
     else:
-        await message.answer("Привет!")
+        await message.answer(text)
 
 
 async def homepage(

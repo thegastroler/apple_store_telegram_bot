@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher
 
 import handlers
 from config import TelegramSettings
-from middleware import IsBannedCallbackMiddleware
+from middleware import UserDataCallbackMiddleware
 from use_cases import container
 from worker import app
 
@@ -14,14 +14,14 @@ bot = Bot(token=TelegramSettings().token, parse_mode="HTML")
 
 
 async def main():
-    container.wire(packages=[handlers], modules=[app])
+    container.wire(packages=[handlers], modules=[app, UserDataCallbackMiddleware])
 
     dp = Dispatcher()
     from handlers import router
 
     dp.include_router(router)
-    dp.callback_query.outer_middleware(IsBannedCallbackMiddleware())
-    dp.message.middleware(IsBannedCallbackMiddleware())
+    dp.callback_query.outer_middleware(UserDataCallbackMiddleware())
+    dp.message.middleware(UserDataCallbackMiddleware())
     await dp.start_polling(bot)
 
 
