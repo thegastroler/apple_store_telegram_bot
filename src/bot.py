@@ -13,9 +13,12 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TelegramSettings().token, parse_mode="HTML")
 
 
-async def main():
+async def init_container():
     container.wire(packages=[handlers], modules=[app, UserDataCallbackMiddleware])
 
+
+async def main():
+    await init_container()
     dp = Dispatcher()
     from handlers import router
 
@@ -23,6 +26,8 @@ async def main():
     dp.callback_query.outer_middleware(UserDataCallbackMiddleware())
     dp.message.middleware(UserDataCallbackMiddleware())
     await dp.start_polling(bot)
+    # from worker.app import scheduled_task
+    # await scheduled_task()
 
 
 if __name__ == "__main__":

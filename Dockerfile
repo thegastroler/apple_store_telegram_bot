@@ -20,7 +20,7 @@ RUN python -m venv .venv
 COPY pyproject.toml .
 COPY poetry.lock .
 
-RUN poetry export -f requirements.txt | .venv/bin/pip install -r /dev/stdin --no-dev
+RUN poetry export -f requirements.txt | .venv/bin/pip install -r /dev/stdin
 
 
 FROM python:3.10.10-slim

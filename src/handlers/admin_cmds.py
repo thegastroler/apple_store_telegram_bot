@@ -1,11 +1,11 @@
 from aiogram.filters import Command
 from aiogram.types import Message
+from custom_filters import AdminFilter
 from dependency_injector.wiring import Provide, inject
 from use_cases import SqlaUsersRepository
 from use_cases.container import SqlaRepositoriesContainer
 
 from . import router
-from filters import AdminFilter
 
 
 @router.message(AdminFilter(), Command("ban"))
