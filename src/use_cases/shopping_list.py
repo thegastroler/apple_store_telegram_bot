@@ -19,9 +19,7 @@ from utils import make_order
 class SqlaShoppingListRepository:
     m = models.ShoppingList
 
-    def __init__(
-        self, session_factory: Callable[..., AbstractAsyncContextManager[AsyncSession]]
-    ):
+    def __init__(self, session_factory):
         self.session_factory = session_factory
 
     async def insert_row(self, user_id: int, item_id: int, order_id: str):

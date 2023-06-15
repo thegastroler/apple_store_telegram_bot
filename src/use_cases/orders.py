@@ -12,9 +12,7 @@ from sqlalchemy import and_, desc, insert, label, select, update, delete
 class SqlaOrdersRepository:
     m = models.Order
 
-    def __init__(
-        self, session_factory: Callable[..., AbstractAsyncContextManager[AsyncSession]]
-    ):
+    def __init__(self, session_factory):
         self.session_factory = session_factory
 
     async def get_unpaid_order(self, user_id: int) -> OrderIdSchema:

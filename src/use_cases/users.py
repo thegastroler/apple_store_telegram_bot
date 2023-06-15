@@ -11,9 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 class SqlaUsersRepository:
     model = models.User
 
-    def __init__(
-        self, session_factory: Callable[..., AbstractAsyncContextManager[AsyncSession]]
-    ):
+    def __init__(self, session_factory):
         self.session_factory = session_factory
 
     async def create(self, chat_id: int, username: str) -> UserSchema:

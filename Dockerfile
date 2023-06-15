@@ -34,3 +34,6 @@ ENV DOCKER=True
 
 # Copy application
 COPY src .
+
+# Copy .env
+COPY .env .

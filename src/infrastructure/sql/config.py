@@ -1,12 +1,15 @@
 import os
 
 from pydantic import BaseConfig, BaseSettings
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class AsyncDatabaseSettings(BaseSettings):
-    user: str = "postgres"
-    password: str = "postgres"
-    db_name: str = "postgres"
+    user: str
+    password: str
+    db: str
     debug: bool = True
 
     class Config(BaseConfig):
@@ -20,4 +23,4 @@ class AsyncDatabaseSettings(BaseSettings):
 
     @property
     def url(self):
-        return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}/{self.db_name}"
+        return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}/{self.db}"

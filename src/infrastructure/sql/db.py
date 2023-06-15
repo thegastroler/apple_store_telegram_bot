@@ -21,9 +21,7 @@ class Database:
         )
 
     @asynccontextmanager
-    async def session(
-        self,
-    ) -> Callable[..., AbstractAsyncContextManager[async_sa.AsyncSession]]:
+    async def session(self):
         session: async_sa.AsyncSession = self._session_factory()
         try:
             yield session

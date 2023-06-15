@@ -4,10 +4,9 @@ version = "0.1.0"
 description = ""
 authors = ["Rodion <rodiononon@yandex.ru>"]
 readme = "README.md"
-packages = [{include = "telegram_bot_example_project"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.8"
 pydantic = {extras = ["dotenv"], version = "^1.10.8"}
 aiogram = "3.0.0b7"
 alembic = "^1.11.1"
@@ -16,6 +15,7 @@ asyncpg = "^0.27.0"
 celery = "^5.3.0"
 redis = "^4.5.5"
 aioredis = "^2.0.1"
+python-dotenv = "^1.0.0"
 
 
 [tool.poetry.group.dev.dependencies]

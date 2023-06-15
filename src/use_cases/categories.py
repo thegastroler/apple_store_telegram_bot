@@ -10,9 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 class SqlaCategoriesRepository:
     m = models.Category
 
-    def __init__(
-        self, session_factory: Callable[..., AbstractAsyncContextManager[AsyncSession]]
-    ):
+    def __init__(self, session_factory):
         self.session_factory = session_factory
 
     async def get_all(self) -> List[CategorySchema]:
