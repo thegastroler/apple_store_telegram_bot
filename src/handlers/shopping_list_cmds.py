@@ -142,13 +142,40 @@ async def shopping_list(
     builder.button(
         text="❌ Очистить корзину",
         callback_data=EditShoppingListCallbackFactory(
-            action="clear", order=shopping_list.order
+            action="confirm", order=shopping_list.order
         ),
     )
     builder.button(text="💳 К оплате", callback_data="pay")
     builder.button(text="« На главную страницу", callback_data="home")
     builder.adjust(1)
     await callback.message.edit_text(msg, reply_markup=builder.as_markup())
+
+
+@router.callback_query(EditShoppingListCallbackFactory.filter(F.action == "confirm"))
+@inject
+async def confirm_clear_shopping_list(
+    callback: CallbackQuery,
+    callback_data: EditShoppingListCallbackFactory,
+):
+    """
+    Подтверждение очистки корзины
+    """
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="❌ Очистить корзину",
+        callback_data=EditShoppingListCallbackFactory(
+            action="clear", order=callback_data.order
+        ),
+    )
+    builder.button(
+        text="« Назад",
+        callback_data="shopping_list",
+    )
+    builder.adjust(1)
+    await callback.message.edit_text(
+        "Вы точно хотите удалить все добавленные товары? Отменить данное действие будет невозможно.",
+        reply_markup=builder.as_markup(),
+    )
 
 
 @router.callback_query(EditShoppingListCallbackFactory.filter(F.action == None))
@@ -162,21 +189,6 @@ async def edit_shopping_list(
     """
     text, builder = await rednder_item_page(callback_data)
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
-
-
-# @router.callback_query(EditShoppingListCallbackFactory.filter(F.action == 'clear'))
-# @inject
-# async def clear_shopping_list(
-#     callback: CallbackQuery,
-#     callback_data: EditShoppingListCallbackFactory,
-#     use_case: SqlaShoppingListRepository = Provide[SqlaRepositoriesContainer.shopping_list_repository]
-#     ):
-#     """
-#     Очистка корзины
-#     """
-#     text, builder = await rednder_item_page(callback_data)
-#     builder = InlineKeyboardBuilder()
-#     await empty_shopping_list(callback, builder)
 
 
 @router.callback_query(EditShoppingListCallbackFactory.filter(F.action != None))
